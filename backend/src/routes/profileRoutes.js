@@ -1,27 +1,25 @@
 const express = require("express");
 
 const Profile = require("../models/Profile");
+const authMiddleware = require(
+  "../middleware/authMiddleware"
+);
 
 const router = express.Router();
 
+router.use(authMiddleware);
+
 // GET /api/profile
-// Return the user's profile.
-//
-// ForgeFit currently has one local user,
-// so there should only be one profile document.
 router.get("/", async (req, res) => {
   try {
-    let profile = await Profile.findOne();
+    const profile =
+      await Profile.findOne({
+        user: req.userId,
+      });
 
-    // First launch: create the initial profile.
     if (!profile) {
-      profile = await Profile.create({
-        name: "Kanishk",
-        height: 175,
-        weight: 78,
-        goal:
-          "Build strength and an athletic physique",
-        memberSince: new Date(2026, 6, 1),
+      return res.status(404).json({
+        message: "Profile not found",
       });
     }
 
@@ -39,7 +37,6 @@ router.get("/", async (req, res) => {
 });
 
 // PATCH /api/profile
-// Update the user's existing profile.
 router.patch("/", async (req, res) => {
   try {
     const {
@@ -51,38 +48,37 @@ router.patch("/", async (req, res) => {
 
     if (
       typeof name !== "string" ||
-      name.trim().length==0||
+      name.trim().length === 0 ||
       typeof height !== "number" ||
       height <= 0 ||
       typeof weight !== "number" ||
       weight <= 0 ||
       typeof goal !== "string" ||
-      goal.trim().length==0
+      goal.trim().length === 0
     ) {
       return res.status(400).json({
         message: "Invalid profile data",
       });
     }
 
-    let profile = await Profile.findOne();
+    const profile =
+      await Profile.findOne({
+        user: req.userId,
+      });
 
     if (!profile) {
-      profile = new Profile({
-        name: name.trim(),
-        height,
-        weight,
-        goal: goal.trim(),
-        memberSince: new Date(),
+      return res.status(404).json({
+        message: "Profile not found",
       });
-    } else {
-      profile.name = name.trim();
-      profile.height = height;
-      profile.weight = weight;
-      profile.goal = goal.trim();
     }
 
+    profile.name = name.trim();
+    profile.height = height;
+    profile.weight = weight;
+    profile.goal = goal.trim();
+
     const updatedProfile =
-        await profile.save();
+      await profile.save();
 
     res.status(200).json(
       updatedProfile
@@ -103,7 +99,8 @@ router.patch("/", async (req, res) => {
     }
 
     res.status(500).json({
-      message: "Failed to update profile",
+      message:
+        "Failed to update profile",
     });
   }
 });

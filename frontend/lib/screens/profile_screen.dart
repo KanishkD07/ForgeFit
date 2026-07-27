@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../models/user_profile.dart';
 import '../services/app_state.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -12,32 +13,93 @@ class ProfileScreen extends StatefulWidget {
 
 class _ProfileScreenState
     extends State<ProfileScreen> {
-  final AppState appState = AppState.instance;
+  final AppState appState =
+      AppState.instance;
 
   @override
   void initState() {
     super.initState();
-    appState.addListener(_refresh);
+
+    appState.addListener(
+      _refresh,
+    );
   }
 
   @override
   void dispose() {
-    appState.removeListener(_refresh);
+    appState.removeListener(
+      _refresh,
+    );
+
     super.dispose();
   }
 
   void _refresh() {
-    if (!mounted) return;
-    setState(() {});
+    if (mounted) {
+      setState(() {});
+    }
   }
 
-  Future<void> _editProfile() async {
-    final profile = appState.profile;
-
-    if (profile == null) {
-      return;
+  String formatNumber(
+    double value,
+  ) {
+    if (value ==
+        value.roundToDouble()) {
+      return value
+          .toInt()
+          .toString();
     }
 
+    return value.toStringAsFixed(1);
+  }
+
+  String getInitial(
+    String name,
+  ) {
+    final trimmed = name.trim();
+
+    if (trimmed.isEmpty) {
+      return '?';
+    }
+
+    return trimmed[0].toUpperCase();
+  }
+
+  String formatMemberSince(
+    DateTime date,
+  ) {
+    const months = [
+      'January',
+      'February',
+      'March',
+      'April',
+      'May',
+      'June',
+      'July',
+      'August',
+      'September',
+      'October',
+      'November',
+      'December',
+    ];
+
+    return '${months[date.month - 1]} ${date.year}';
+  }
+
+  void _selectAll(
+    TextEditingController controller,
+  ) {
+    controller.selection =
+        TextSelection(
+      baseOffset: 0,
+      extentOffset:
+          controller.text.length,
+    );
+  }
+
+  Future<void> _editProfile(
+    UserProfile profile,
+  ) async {
     final nameController =
         TextEditingController(
       text: profile.name,
@@ -45,12 +107,16 @@ class _ProfileScreenState
 
     final heightController =
         TextEditingController(
-      text: formatNumber(profile.height),
+      text: formatNumber(
+        profile.height,
+      ),
     );
 
     final weightController =
         TextEditingController(
-      text: formatNumber(profile.weight),
+      text: formatNumber(
+        profile.weight,
+      ),
     );
 
     final goalController =
@@ -58,182 +124,297 @@ class _ProfileScreenState
       text: profile.goal,
     );
 
-    final result =
-        await showDialog<ProfileEditResult>(
+    bool saving = false;
+
+    await showDialog<void>(
       context: context,
+      barrierDismissible: false,
       builder: (dialogContext) {
-        return AlertDialog(
-          title: const Text(
-            "Edit Profile",
-          ),
+        return StatefulBuilder(
+          builder: (
+            context,
+            setDialogState,
+          ) {
+            Future<void>
+                saveProfile() async {
+              if (saving) {
+                return;
+              }
 
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize:
-                  MainAxisSize.min,
-              children: [
-                TextField(
-                  controller:
-                      nameController,
-                  textCapitalization:
-                      TextCapitalization
-                          .words,
-                  decoration:
-                      const InputDecoration(
-                    labelText: "Name",
-                    prefixIcon: Icon(
-                      Icons.person_outline,
+              final name =
+                  nameController.text
+                      .trim();
+
+              final height =
+                  double.tryParse(
+                heightController.text
+                    .trim(),
+              );
+
+              final weight =
+                  double.tryParse(
+                weightController.text
+                    .trim(),
+              );
+
+              final goal =
+                  goalController.text
+                      .trim();
+
+              if (name.isEmpty ||
+                  height == null ||
+                  height <= 0 ||
+                  weight == null ||
+                  weight <= 0 ||
+                  goal.isEmpty) {
+                ScaffoldMessenger.of(
+                  this.context,
+                ).showSnackBar(
+                  const SnackBar(
+                    content: Text(
+                      'Enter valid profile details.',
                     ),
-                    border:
-                        OutlineInputBorder(),
                   ),
-                ),
-
-                const SizedBox(
-                  height: 14,
-                ),
-
-                TextField(
-                  controller:
-                      heightController,
-                  keyboardType:
-                      const TextInputType
-                          .numberWithOptions(
-                    decimal: true,
-                  ),
-                  decoration:
-                      const InputDecoration(
-                    labelText: "Height",
-                    suffixText: "cm",
-                    prefixIcon: Icon(
-                      Icons.height,
-                    ),
-                    border:
-                        OutlineInputBorder(),
-                  ),
-                ),
-
-                const SizedBox(
-                  height: 14,
-                ),
-
-                TextField(
-                  controller:
-                      weightController,
-                  keyboardType:
-                      const TextInputType
-                          .numberWithOptions(
-                    decimal: true,
-                  ),
-                  decoration:
-                      const InputDecoration(
-                    labelText: "Weight",
-                    suffixText: "kg",
-                    prefixIcon: Icon(
-                      Icons
-                          .monitor_weight_outlined,
-                    ),
-                    border:
-                        OutlineInputBorder(),
-                  ),
-                ),
-
-                const SizedBox(
-                  height: 14,
-                ),
-
-                TextField(
-                  controller:
-                      goalController,
-                  textCapitalization:
-                      TextCapitalization
-                          .sentences,
-                  maxLines: 3,
-                  decoration:
-                      const InputDecoration(
-                    labelText:
-                        "Training Goal",
-                    hintText:
-                        "What are you training for?",
-                    prefixIcon: Icon(
-                      Icons.flag_outlined,
-                    ),
-                    border:
-                        OutlineInputBorder(),
-                  ),
-                ),
-              ],
-            ),
-          ),
-
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.pop(
-                  dialogContext,
-                );
-              },
-              child: const Text(
-                "Cancel",
-              ),
-            ),
-
-            ElevatedButton(
-              onPressed: () {
-                final name =
-                    nameController.text
-                        .trim();
-
-                final height =
-                    double.tryParse(
-                  heightController.text
-                      .trim(),
                 );
 
-                final weight =
-                    double.tryParse(
-                  weightController.text
-                      .trim(),
+                return;
+              }
+
+              setDialogState(() {
+                saving = true;
+              });
+
+              try {
+                await appState
+                    .updateProfile(
+                  name: name,
+                  height: height,
+                  weight: weight,
+                  goal: goal,
                 );
 
-                final goal =
-                    goalController.text
-                        .trim();
-
-                if (name.isEmpty ||
-                    goal.isEmpty ||
-                    height == null ||
-                    weight == null ||
-                    height <= 0 ||
-                    weight <= 0) {
-                  ScaffoldMessenger.of(
-                    context,
-                  ).showSnackBar(
-                    const SnackBar(
-                      content: Text(
-                        "Enter valid profile details.",
-                      ),
-                    ),
-                  );
-
+                if (!mounted) {
                   return;
                 }
 
-                Navigator.pop(
-                  dialogContext,
-                  ProfileEditResult(
-                    name: name,
-                    height: height,
-                    weight: weight,
-                    goal: goal,
+                if (dialogContext
+                    .mounted) {
+                  Navigator.of(
+                    dialogContext,
+                  ).pop();
+                }
+
+                ScaffoldMessenger.of(
+                  this.context,
+                ).showSnackBar(
+                  const SnackBar(
+                    content: Text(
+                      'Profile updated successfully.',
+                    ),
                   ),
                 );
-              },
-              child: const Text(
-                "Save",
+              } catch (error) {
+                if (!mounted) {
+                  return;
+                }
+
+                final message = error
+                    .toString()
+                    .replaceFirst(
+                      'Exception: ',
+                      '',
+                    );
+
+                ScaffoldMessenger.of(
+                  this.context,
+                ).showSnackBar(
+                  SnackBar(
+                    content: Text(
+                      message,
+                    ),
+                  ),
+                );
+
+                setDialogState(() {
+                  saving = false;
+                });
+              }
+            }
+
+            return AlertDialog(
+              title: const Text(
+                'Edit Profile',
               ),
-            ),
-          ],
+              content:
+                  SingleChildScrollView(
+                child: SizedBox(
+                  width: 400,
+                  child: Column(
+                    mainAxisSize:
+                        MainAxisSize.min,
+                    children: [
+                      TextField(
+                        controller:
+                            nameController,
+                        onTap: () {
+                          _selectAll(
+                            nameController,
+                          );
+                        },
+                        textCapitalization:
+                            TextCapitalization
+                                .words,
+                        decoration:
+                            const InputDecoration(
+                          labelText:
+                              'Name',
+                          prefixIcon:
+                              Icon(
+                            Icons
+                                .person_outline,
+                          ),
+                          border:
+                              OutlineInputBorder(),
+                        ),
+                      ),
+
+                      const SizedBox(
+                        height: 16,
+                      ),
+
+                      TextField(
+                        controller:
+                            heightController,
+                        onTap: () {
+                          _selectAll(
+                            heightController,
+                          );
+                        },
+                        keyboardType:
+                            const TextInputType
+                                .numberWithOptions(
+                          decimal: true,
+                        ),
+                        decoration:
+                            const InputDecoration(
+                          labelText:
+                              'Height',
+                          suffixText:
+                              'cm',
+                          prefixIcon:
+                              Icon(
+                            Icons.height,
+                          ),
+                          border:
+                              OutlineInputBorder(),
+                        ),
+                      ),
+
+                      const SizedBox(
+                        height: 16,
+                      ),
+
+                      TextField(
+                        controller:
+                            weightController,
+                        onTap: () {
+                          _selectAll(
+                            weightController,
+                          );
+                        },
+                        keyboardType:
+                            const TextInputType
+                                .numberWithOptions(
+                          decimal: true,
+                        ),
+                        decoration:
+                            const InputDecoration(
+                          labelText:
+                              'Weight',
+                          suffixText:
+                              'kg',
+                          prefixIcon:
+                              Icon(
+                            Icons
+                                .monitor_weight_outlined,
+                          ),
+                          border:
+                              OutlineInputBorder(),
+                        ),
+                      ),
+
+                      const SizedBox(
+                        height: 16,
+                      ),
+
+                      TextField(
+                        controller:
+                            goalController,
+                        onTap: () {
+                          _selectAll(
+                            goalController,
+                          );
+                        },
+                        textCapitalization:
+                            TextCapitalization
+                                .sentences,
+                        maxLines: 3,
+                        decoration:
+                            const InputDecoration(
+                          labelText:
+                              'Training Goal',
+                          hintText:
+                              'What are you training for?',
+                          prefixIcon:
+                              Icon(
+                            Icons
+                                .flag_outlined,
+                          ),
+                          border:
+                              OutlineInputBorder(),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed:
+                      saving
+                          ? null
+                          : () {
+                              Navigator.of(
+                                dialogContext,
+                              ).pop();
+                            },
+                  child: const Text(
+                    'Cancel',
+                  ),
+                ),
+
+                ElevatedButton(
+                  onPressed:
+                      saving
+                          ? null
+                          : saveProfile,
+                  child: saving
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child:
+                              CircularProgressIndicator(
+                            strokeWidth:
+                                2,
+                          ),
+                        )
+                      : const Text(
+                          'Save',
+                        ),
+                ),
+              ],
+            );
+          },
         );
       },
     );
@@ -242,46 +423,17 @@ class _ProfileScreenState
     heightController.dispose();
     weightController.dispose();
     goalController.dispose();
-
-    if (result == null) return;
-
-    try {
-      await appState.updateProfile(
-        name: result.name,
-        height: result.height,
-        weight: result.weight,
-        goal: result.goal,
-      );
-
-      if (!mounted) return;
-
-      ScaffoldMessenger.of(context)
-          .showSnackBar(
-        const SnackBar(
-          content: Text(
-            "Profile updated",
-          ),
-        ),
-      );
-    } catch (error) {
-      if (!mounted) return;
-
-      ScaffoldMessenger.of(context)
-          .showSnackBar(
-        const SnackBar(
-          content: Text(
-            "Couldn't update profile. Check the backend.",
-          ),
-        ),
-      );
-    }
   }
 
   @override
-  Widget build(BuildContext context) {
-    final profile = appState.profile;
+  Widget build(
+    BuildContext context,
+  ) {
+    final profile =
+        appState.profile;
 
-    if (profile == null) {
+    if (appState.loadingProfile &&
+        profile == null) {
       return const Scaffold(
         body: Center(
           child:
@@ -290,10 +442,66 @@ class _ProfileScreenState
       );
     }
 
+    if (profile == null) {
+      return Scaffold(
+        appBar: AppBar(
+          title: const Text(
+            'Profile',
+          ),
+        ),
+        body: Center(
+          child: Column(
+            mainAxisSize:
+                MainAxisSize.min,
+            children: [
+              const Text(
+                'Profile could not be loaded.',
+              ),
+
+              const SizedBox(
+                height: 16,
+              ),
+
+              ElevatedButton(
+                onPressed: () async {
+                  try {
+                    await appState
+                        .loadProfile();
+                  } catch (error) {
+                    if (!mounted) {
+                      return;
+                    }
+
+                    ScaffoldMessenger
+                            .of(context)
+                        .showSnackBar(
+                      SnackBar(
+                        content: Text(
+                          error
+                              .toString()
+                              .replaceFirst(
+                                'Exception: ',
+                                '',
+                              ),
+                        ),
+                      ),
+                    );
+                  }
+                },
+                child: const Text(
+                  'Try Again',
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
     return Scaffold(
       appBar: AppBar(
         title: const Text(
-          "Profile",
+          'Profile',
           style: TextStyle(
             fontWeight:
                 FontWeight.bold,
@@ -301,8 +509,12 @@ class _ProfileScreenState
         ),
         actions: [
           IconButton(
-            tooltip: "Edit Profile",
-            onPressed: _editProfile,
+            tooltip: 'Edit Profile',
+            onPressed: () {
+              _editProfile(
+                profile,
+              );
+            },
             icon: const Icon(
               Icons.edit_outlined,
             ),
@@ -312,280 +524,212 @@ class _ProfileScreenState
 
       body: SingleChildScrollView(
         padding:
-            const EdgeInsets.fromLTRB(
-          20,
-          12,
-          20,
-          30,
+            const EdgeInsets.all(24),
+        child: Center(
+          child: ConstrainedBox(
+            constraints:
+                const BoxConstraints(
+              maxWidth: 650,
+            ),
+            child: Column(
+              children: [
+                const SizedBox(
+                  height: 12,
+                ),
+
+                CircleAvatar(
+                  radius: 54,
+                  backgroundColor:
+                      Colors.red,
+                  child: Text(
+                    getInitial(
+                      profile.name,
+                    ),
+                    style:
+                        const TextStyle(
+                      fontSize: 40,
+                      fontWeight:
+                          FontWeight.bold,
+                      color:
+                          Colors.white,
+                    ),
+                  ),
+                ),
+
+                const SizedBox(
+                  height: 18,
+                ),
+
+                Text(
+                  profile.name,
+                  textAlign:
+                      TextAlign.center,
+                  style:
+                      const TextStyle(
+                    fontSize: 28,
+                    fontWeight:
+                        FontWeight.bold,
+                  ),
+                ),
+
+                const SizedBox(
+                  height: 8,
+                ),
+
+                Text(
+                  profile.goal,
+                  textAlign:
+                      TextAlign.center,
+                  style:
+                      const TextStyle(
+                    fontSize: 16,
+                    color: Colors.grey,
+                  ),
+                ),
+
+                const SizedBox(
+                  height: 30,
+                ),
+
+                Row(
+                  children: [
+                    Expanded(
+                      child: _statCard(
+                        icon:
+                            Icons.height,
+                        title:
+                            'Height',
+                        value:
+                            '${formatNumber(profile.height)} cm',
+                      ),
+                    ),
+
+                    const SizedBox(
+                      width: 16,
+                    ),
+
+                    Expanded(
+                      child: _statCard(
+                        icon: Icons
+                            .monitor_weight_outlined,
+                        title:
+                            'Weight',
+                        value:
+                            '${formatNumber(profile.weight)} kg',
+                      ),
+                    ),
+                  ],
+                ),
+
+                const SizedBox(
+                  height: 16,
+                ),
+
+                _infoCard(
+                  icon: Icons
+                      .flag_outlined,
+                  title:
+                      'Training Goal',
+                  value:
+                      profile.goal,
+                ),
+
+                const SizedBox(
+                  height: 16,
+                ),
+
+                _infoCard(
+                  icon: Icons
+                      .calendar_month_outlined,
+                  title:
+                      'Member Since',
+                  value:
+                      formatMemberSince(
+                    profile.memberSince,
+                  ),
+                ),
+
+                const SizedBox(
+                  height: 28,
+                ),
+
+                SizedBox(
+                  width:
+                      double.infinity,
+                  height: 52,
+                  child:
+                      ElevatedButton.icon(
+                    onPressed: () {
+                      _editProfile(
+                        profile,
+                      );
+                    },
+                    icon: const Icon(
+                      Icons
+                          .edit_outlined,
+                    ),
+                    label:
+                        const Text(
+                      'Edit Profile',
+                      style:
+                          TextStyle(
+                        fontSize: 16,
+                        fontWeight:
+                            FontWeight
+                                .bold,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
         ),
+      ),
+    );
+  }
+
+  Widget _statCard({
+    required IconData icon,
+    required String title,
+    required String value,
+  }) {
+    return Card(
+      child: Padding(
+        padding:
+            const EdgeInsets.all(20),
         child: Column(
           children: [
-            const SizedBox(height: 10),
-
-            CircleAvatar(
-              radius: 55,
-              backgroundColor:
-                  Colors.red.withValues(
-                alpha: 0.12,
-              ),
-              child: Text(
-                getInitial(
-                  profile.name,
-                ),
-                style: const TextStyle(
-                  fontSize: 42,
-                  fontWeight:
-                      FontWeight.bold,
-                  color: Colors.red,
-                ),
-              ),
+            Icon(
+              icon,
+              size: 28,
+              color: Colors.red,
             ),
 
-            const SizedBox(height: 18),
+            const SizedBox(
+              height: 10,
+            ),
 
             Text(
-              profile.name,
+              value,
               textAlign:
                   TextAlign.center,
-              style: const TextStyle(
-                fontSize: 28,
+              style:
+                  const TextStyle(
+                fontSize: 22,
                 fontWeight:
                     FontWeight.bold,
               ),
             ),
 
-            const SizedBox(height: 7),
+            const SizedBox(
+              height: 5,
+            ),
 
             Text(
-              profile.goal,
-              textAlign:
-                  TextAlign.center,
-              style: const TextStyle(
-                fontSize: 14,
-                color: Colors.grey,
-              ),
-            ),
-
-            const SizedBox(height: 30),
-
-            Row(
-              children: [
-                Expanded(
-                  child: ProfileStatCard(
-                    icon: Icons.height,
-                    value: formatNumber(
-                      profile.height,
-                    ),
-                    label: "Height",
-                    unit: "cm",
-                  ),
-                ),
-
-                const SizedBox(width: 12),
-
-                Expanded(
-                  child: ProfileStatCard(
-                    icon: Icons
-                        .monitor_weight_outlined,
-                    value: formatNumber(
-                      profile.weight,
-                    ),
-                    label: "Weight",
-                    unit: "kg",
-                  ),
-                ),
-              ],
-            ),
-
-            const SizedBox(height: 12),
-
-            Row(
-              children: [
-                Expanded(
-                  child: ProfileStatCard(
-                    icon: Icons
-                        .fitness_center,
-                    value:
-                        "${appState.totalWorkouts}",
-                    label: "Workouts",
-                    unit: "",
-                  ),
-                ),
-
-                const SizedBox(width: 12),
-
-                Expanded(
-                  child: ProfileStatCard(
-                    icon: Icons
-                        .emoji_events_outlined,
-                    value:
-                        "${appState.totalPersonalRecords}",
-                    label: "PRs",
-                    unit: "",
-                  ),
-                ),
-              ],
-            ),
-
-            const SizedBox(height: 30),
-
-            ProfileInfoCard(
-              icon: Icons.flag_outlined,
-              title: "Training Goal",
-              value: profile.goal,
-            ),
-
-            const SizedBox(height: 12),
-
-            ProfileInfoCard(
-              icon: Icons
-                  .calendar_month_outlined,
-              title: "Member Since",
-              value: formatMemberSince(
-                profile.memberSince,
-              ),
-            ),
-
-            const SizedBox(height: 12),
-
-            ProfileInfoCard(
-              icon:
-                  Icons.bar_chart_rounded,
-              title:
-                  "Total Volume Lifted",
-              value:
-                  "${formatCompactVolume(appState.totalVolume)} kg",
-            ),
-
-            const SizedBox(height: 12),
-
-            ProfileInfoCard(
-              icon: Icons.timer_outlined,
-              title:
-                  "Total Training Time",
-              value: formatTrainingTime(
-                appState
-                    .totalTrainingSeconds,
-              ),
-            ),
-
-            const SizedBox(height: 30),
-
-            SizedBox(
-              width: double.infinity,
-              height: 54,
-              child:
-                  OutlinedButton.icon(
-                onPressed: _editProfile,
-                icon: const Icon(
-                  Icons.edit_outlined,
-                ),
-                label: const Text(
-                  "Edit Profile",
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight:
-                        FontWeight.bold,
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class ProfileEditResult {
-  final String name;
-  final double height;
-  final double weight;
-  final String goal;
-
-  const ProfileEditResult({
-    required this.name,
-    required this.height,
-    required this.weight,
-    required this.goal,
-  });
-}
-
-class ProfileStatCard
-    extends StatelessWidget {
-  final IconData icon;
-  final String value;
-  final String label;
-  final String unit;
-
-  const ProfileStatCard({
-    super.key,
-    required this.icon,
-    required this.value,
-    required this.label,
-    required this.unit,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      child: Padding(
-        padding:
-            const EdgeInsets.symmetric(
-          vertical: 22,
-          horizontal: 12,
-        ),
-        child: Column(
-          children: [
-            Icon(
-              icon,
-              color: Colors.red,
-              size: 28,
-            ),
-
-            const SizedBox(height: 12),
-
-            FittedBox(
-              child: Row(
-                mainAxisAlignment:
-                    MainAxisAlignment
-                        .center,
-                children: [
-                  Text(
-                    value,
-                    style:
-                        const TextStyle(
-                      fontSize: 22,
-                      fontWeight:
-                          FontWeight
-                              .bold,
-                    ),
-                  ),
-
-                  if (unit
-                      .isNotEmpty) ...[
-                    const SizedBox(
-                      width: 4,
-                    ),
-                    Text(
-                      unit,
-                      style:
-                          const TextStyle(
-                        fontSize: 13,
-                        color:
-                            Colors.grey,
-                      ),
-                    ),
-                  ],
-                ],
-              ),
-            ),
-
-            const SizedBox(height: 5),
-
-            Text(
-              label,
-              style: const TextStyle(
+              title,
+              style:
+                  const TextStyle(
                 color: Colors.grey,
               ),
             ),
@@ -594,36 +738,27 @@ class ProfileStatCard
       ),
     );
   }
-}
 
-class ProfileInfoCard
-    extends StatelessWidget {
-  final IconData icon;
-  final String title;
-  final String value;
-
-  const ProfileInfoCard({
-    super.key,
-    required this.icon,
-    required this.title,
-    required this.value,
-  });
-
-  @override
-  Widget build(BuildContext context) {
+  Widget _infoCard({
+    required IconData icon,
+    required String title,
+    required String value,
+  }) {
     return Card(
       child: Padding(
         padding:
-            const EdgeInsets.all(18),
+            const EdgeInsets.all(20),
         child: Row(
           children: [
             Icon(
               icon,
-              color: Colors.red,
               size: 28,
+              color: Colors.red,
             ),
 
-            const SizedBox(width: 16),
+            const SizedBox(
+              width: 18,
+            ),
 
             Expanded(
               child: Column(
@@ -649,10 +784,9 @@ class ProfileInfoCard
                     value,
                     style:
                         const TextStyle(
-                      fontSize: 16,
+                      fontSize: 17,
                       fontWeight:
-                          FontWeight
-                              .w600,
+                          FontWeight.w600,
                     ),
                   ),
                 ],
@@ -663,80 +797,4 @@ class ProfileInfoCard
       ),
     );
   }
-}
-
-String getInitial(String name) {
-  final trimmed = name.trim();
-
-  if (trimmed.isEmpty) {
-    return "?";
-  }
-
-  return trimmed[0].toUpperCase();
-}
-
-String formatMemberSince(
-  DateTime date,
-) {
-  const months = [
-    "January",
-    "February",
-    "March",
-    "April",
-    "May",
-    "June",
-    "July",
-    "August",
-    "September",
-    "October",
-    "November",
-    "December",
-  ];
-
-  return "${months[date.month - 1]} ${date.year}";
-}
-
-String formatTrainingTime(
-  int seconds,
-) {
-  final hours = seconds ~/ 3600;
-
-  final minutes =
-      (seconds % 3600) ~/ 60;
-
-  final remainingSeconds =
-      seconds % 60;
-
-  if (hours > 0) {
-    return "${hours}h ${minutes}m";
-  }
-
-  if (minutes > 0) {
-    return "${minutes}m";
-  }
-
-  return "${remainingSeconds}s";
-}
-
-String formatCompactVolume(
-  double volume,
-) {
-  if (volume >= 1000000) {
-    return "${(volume / 1000000).toStringAsFixed(1)}M";
-  }
-
-  if (volume >= 1000) {
-    return "${(volume / 1000).toStringAsFixed(1)}k";
-  }
-
-  return formatNumber(volume);
-}
-
-String formatNumber(double value) {
-  if (value ==
-      value.roundToDouble()) {
-    return value.toInt().toString();
-  }
-
-  return value.toStringAsFixed(1);
 }

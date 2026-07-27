@@ -1,11 +1,11 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 
 import '../services/app_state.dart';
+import 'dashboard_screen.dart';
 import 'login_screen.dart';
 
-class SplashScreen extends StatefulWidget {
+class SplashScreen
+    extends StatefulWidget {
   const SplashScreen({super.key});
 
   @override
@@ -22,21 +22,64 @@ class _SplashScreenState
   void initState() {
     super.initState();
 
-    _initializeApp();
+    _initialize();
   }
 
-  Future<void> _initializeApp() async {
-    try {
-      await Future.wait([
-        appState.loadProfile(),
-        appState.loadWorkouts(),
+  Future<void> _initialize() async {
+    // Keep splash visible briefly.
+    final minimumSplash =
         Future.delayed(
-          const Duration(seconds: 2),
+      const Duration(
+        seconds: 2,
+      ),
+    );
+
+    bool authenticated = false;
+
+    try {
+      final hasSession =
+          await appState
+              .restoreSession();
+
+      if (hasSession) {
+        try {
+          await Future.wait([
+            appState.loadProfile(),
+            appState.loadWorkouts(),
+          ]);
+
+          authenticated = true;
+        } catch (error) {
+          debugPrint(
+            'Stored session is invalid: '
+            '$error',
+          );
+
+          await appState.logout();
+        }
+      }
+    } catch (error) {
+      debugPrint(
+        'Failed to restore session: '
+        '$error',
+      );
+
+      await appState.logout();
+    }
+
+    await minimumSplash;
+
+    if (!mounted) return;
+
+    if (authenticated) {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (context) =>
+              const DashboardScreen(),
         ),
-      ]);
-
-      if (!mounted) return;
-
+      );
+    } else {
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(
@@ -44,37 +87,51 @@ class _SplashScreenState
               const LoginScreen(),
         ),
       );
-    } catch (error) {
-      debugPrint(
-        "Failed to initialize ForgeFit: "
-        "$error",
-      );
-
-      if (!mounted) return;
-
-      ScaffoldMessenger.of(context)
-          .showSnackBar(
-        const SnackBar(
-          content: Text(
-            "Couldn't connect to ForgeFit. "
-            "Check the backend and try again.",
-          ),
-        ),
-      );
     }
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(
+    BuildContext context,
+  ) {
     return const Scaffold(
       body: Center(
-        child: Text(
-          "ForgeFit",
-          style: TextStyle(
-            fontSize: 40,
-            fontWeight:
-                FontWeight.bold,
-          ),
+        child: Column(
+          mainAxisSize:
+              MainAxisSize.min,
+          children: [
+            Icon(
+              Icons.fitness_center,
+              size: 72,
+              color: Colors.red,
+            ),
+
+            SizedBox(
+              height: 18,
+            ),
+
+            Text(
+              'ForgeFit',
+              style: TextStyle(
+                fontSize: 40,
+                fontWeight:
+                    FontWeight.bold,
+              ),
+            ),
+
+            SizedBox(
+              height: 24,
+            ),
+
+            SizedBox(
+              width: 24,
+              height: 24,
+              child:
+                  CircularProgressIndicator(
+                strokeWidth: 2,
+              ),
+            ),
+          ],
         ),
       ),
     );

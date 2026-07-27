@@ -7,20 +7,32 @@ import '../models/user_profile.dart';
 
 class ProfileApi {
   static const String baseUrl =
-      "http://localhost:3000/api/profile";
+      'http://localhost:3000/api/profile';
+
+  static Map<String, String> _headers(
+    String token,
+  ) {
+    return {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer $token',
+    };
+  }
 
   // GET /api/profile
   static Future<UserProfile>
-      getProfile() async {
+      getProfile(
+    String token,
+  ) async {
     final response =
         await http.get(
       Uri.parse(baseUrl),
+      headers: _headers(token),
     );
 
     if (response.statusCode != 200) {
       throw Exception(
-        "Failed to load profile. "
-        "Status: ${response.statusCode}",
+        'Failed to load profile: '
+        '${response.body}',
       );
     }
 
@@ -35,14 +47,12 @@ class ProfileApi {
   static Future<UserProfile>
       updateProfile(
     UserProfile profile,
+    String token,
   ) async {
     final response =
         await http.patch(
       Uri.parse(baseUrl),
-      headers: {
-        "Content-Type":
-            "application/json",
-      },
+      headers: _headers(token),
       body: jsonEncode(
         profile.toJson(),
       ),
@@ -50,8 +60,8 @@ class ProfileApi {
 
     if (response.statusCode != 200) {
       throw Exception(
-        "Failed to update profile. "
-        "Status: ${response.statusCode}",
+        'Failed to update profile: '
+        '${response.body}',
       );
     }
 

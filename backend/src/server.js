@@ -11,6 +11,10 @@ const profileRoutes = require(
   "./routes/profileRoutes"
 );
 
+const authRoutes = require(
+  "./routes/authRoutes"
+);
+
 dotenv.config();
 
 const app = express();
@@ -55,6 +59,11 @@ app.use(
 app.use(
   "/api/profile",
   profileRoutes
+);
+
+app.use(
+  "/api/auth",
+  authRoutes
 );
 
 async function startServer() {

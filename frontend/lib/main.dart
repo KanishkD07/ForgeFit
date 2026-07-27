@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'screens/splash_screen.dart';
 
 void main() {
+  WidgetsFlutterBinding.ensureInitialized();
+
   runApp(const ForgeFit());
 }
 
@@ -18,29 +20,39 @@ class ForgeFit extends StatelessWidget {
       theme: ThemeData(
         brightness: Brightness.dark,
 
-        scaffoldBackgroundColor: Colors.black,
+        scaffoldBackgroundColor:
+            Colors.black,
 
-        colorScheme: const ColorScheme.dark(
+        colorScheme:
+            const ColorScheme.dark(
           primary: Colors.red,
         ),
 
         bottomNavigationBarTheme:
             const BottomNavigationBarThemeData(
-          backgroundColor: Color(0xFF121212),
-          selectedItemColor: Colors.red,
-          unselectedItemColor: Colors.grey,
-          type: BottomNavigationBarType.fixed,
+          backgroundColor:
+              Color(0xFF121212),
+          selectedItemColor:
+              Colors.red,
+          unselectedItemColor:
+              Colors.grey,
+          type:
+              BottomNavigationBarType.fixed,
         ),
 
-        cardTheme: const CardThemeData(
+        cardTheme:
+            const CardThemeData(
           color: Color(0xFF1E1E1E),
         ),
 
         elevatedButtonTheme:
             ElevatedButtonThemeData(
-          style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.red,
-            foregroundColor: Colors.white,
+          style:
+              ElevatedButton.styleFrom(
+            backgroundColor:
+                Colors.red,
+            foregroundColor:
+                Colors.white,
           ),
         ),
       ),

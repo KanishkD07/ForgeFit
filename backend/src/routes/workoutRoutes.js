@@ -2,14 +2,24 @@ const express = require("express");
 const mongoose = require("mongoose");
 
 const Workout = require("../models/Workout");
+const authMiddleware = require(
+  "../middleware/authMiddleware"
+);
 
 const router = express.Router();
 
+// Every workout route below requires authentication.
+router.use(authMiddleware);
+
 // GET /api/workouts
+// Return only workouts belonging to the logged-in user.
 router.get("/", async (req, res) => {
   try {
-    const workouts = await Workout.find()
-      .sort({ date: -1 });
+    const workouts = await Workout.find({
+      user: req.userId,
+    }).sort({
+      date: -1,
+    });
 
     res.status(200).json(workouts);
   } catch (error) {
@@ -25,6 +35,7 @@ router.get("/", async (req, res) => {
 });
 
 // POST /api/workouts
+// Create a workout for the logged-in user.
 router.post("/", async (req, res) => {
   try {
     const {
@@ -45,13 +56,14 @@ router.post("/", async (req, res) => {
     }
 
     const workout = new Workout({
+      user: req.userId,
       date: date || new Date(),
       durationSeconds,
       exercises,
     });
 
     const savedWorkout =
-        await workout.save();
+      await workout.save();
 
     res.status(201).json(
       savedWorkout
@@ -78,7 +90,8 @@ router.post("/", async (req, res) => {
 });
 
 // PATCH /api/workouts/:id
-// Update an existing workout
+// Update a workout only if it belongs to
+// the logged-in user.
 router.patch("/:id", async (req, res) => {
   try {
     const { id } = req.params;
@@ -109,18 +122,21 @@ router.patch("/:id", async (req, res) => {
     }
 
     const updatedWorkout =
-        await Workout.findByIdAndUpdate(
-      id,
-      {
-        date,
-        durationSeconds,
-        exercises,
-      },
-      {
-        new: true,
-        runValidators: true,
-      }
-    );
+      await Workout.findOneAndUpdate(
+        {
+          _id: id,
+          user: req.userId,
+        },
+        {
+          date,
+          durationSeconds,
+          exercises,
+        },
+        {
+          new: true,
+          runValidators: true,
+        }
+      );
 
     if (!updatedWorkout) {
       return res.status(404).json({
@@ -148,12 +164,14 @@ router.patch("/:id", async (req, res) => {
 
     res.status(500).json({
       message:
-          "Failed to update workout",
+        "Failed to update workout",
     });
   }
 });
 
 // DELETE /api/workouts/:id
+// Delete a workout only if it belongs to
+// the logged-in user.
 router.delete("/:id", async (req, res) => {
   try {
     const { id } = req.params;
@@ -167,9 +185,10 @@ router.delete("/:id", async (req, res) => {
     }
 
     const workout =
-        await Workout.findByIdAndDelete(
-      id
-    );
+      await Workout.findOneAndDelete({
+        _id: id,
+        user: req.userId,
+      });
 
     if (!workout) {
       return res.status(404).json({
@@ -179,7 +198,7 @@ router.delete("/:id", async (req, res) => {
 
     res.status(200).json({
       message:
-          "Workout deleted successfully",
+        "Workout deleted successfully",
       id: workout._id,
     });
   } catch (error) {
@@ -190,7 +209,7 @@ router.delete("/:id", async (req, res) => {
 
     res.status(500).json({
       message:
-          "Failed to delete workout",
+        "Failed to delete workout",
     });
   }
 });

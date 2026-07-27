@@ -1478,7 +1478,7 @@ class SetRow extends StatelessWidget {
               },
               decoration:
                   const InputDecoration(
-                hintText: "0",
+
                 contentPadding:
                     EdgeInsets.symmetric(
                   horizontal: 8,
@@ -1512,7 +1512,6 @@ class SetRow extends StatelessWidget {
               },
               decoration:
                   const InputDecoration(
-                hintText: "0",
                 contentPadding:
                     EdgeInsets.symmetric(
                   horizontal: 8,

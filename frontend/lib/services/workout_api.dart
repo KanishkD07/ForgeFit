@@ -8,17 +8,25 @@ class WorkoutApi {
   static const String baseUrl =
       'http://localhost:3000';
 
+  static Map<String, String> _headers(
+    String token,
+  ) {
+    return {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer $token',
+    };
+  }
+
   // CREATE
   static Future<WorkoutData> saveWorkout(
     WorkoutData workout,
+    String token,
   ) async {
     final response = await http.post(
       Uri.parse(
         '$baseUrl/api/workouts',
       ),
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: _headers(token),
       body: jsonEncode(
         _workoutToJson(workout),
       ),
@@ -40,11 +48,14 @@ class WorkoutApi {
 
   // READ
   static Future<List<WorkoutData>>
-      getWorkouts() async {
+      getWorkouts(
+    String token,
+  ) async {
     final response = await http.get(
       Uri.parse(
         '$baseUrl/api/workouts',
       ),
+      headers: _headers(token),
     );
 
     if (response.statusCode != 200) {
@@ -68,14 +79,13 @@ class WorkoutApi {
   // UPDATE
   static Future<WorkoutData> updateWorkout(
     WorkoutData workout,
+    String token,
   ) async {
     final response = await http.patch(
       Uri.parse(
         '$baseUrl/api/workouts/${workout.id}',
       ),
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: _headers(token),
       body: jsonEncode(
         _workoutToJson(workout),
       ),
@@ -98,11 +108,13 @@ class WorkoutApi {
   // DELETE
   static Future<void> deleteWorkout(
     String id,
+    String token,
   ) async {
     final response = await http.delete(
       Uri.parse(
         '$baseUrl/api/workouts/$id',
       ),
+      headers: _headers(token),
     );
 
     if (response.statusCode != 200) {
