@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../models/user_profile.dart';
 import '../services/app_state.dart';
+import 'login_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -19,18 +20,12 @@ class _ProfileScreenState
   @override
   void initState() {
     super.initState();
-
-    appState.addListener(
-      _refresh,
-    );
+    appState.addListener(_refresh);
   }
 
   @override
   void dispose() {
-    appState.removeListener(
-      _refresh,
-    );
-
+    appState.removeListener(_refresh);
     super.dispose();
   }
 
@@ -40,22 +35,16 @@ class _ProfileScreenState
     }
   }
 
-  String formatNumber(
-    double value,
-  ) {
+  String formatNumber(double value) {
     if (value ==
         value.roundToDouble()) {
-      return value
-          .toInt()
-          .toString();
+      return value.toInt().toString();
     }
 
     return value.toStringAsFixed(1);
   }
 
-  String getInitial(
-    String name,
-  ) {
+  String getInitial(String name) {
     final trimmed = name.trim();
 
     if (trimmed.isEmpty) {
@@ -95,6 +84,84 @@ class _ProfileScreenState
       extentOffset:
           controller.text.length,
     );
+  }
+
+  Future<void> _logout() async {
+    final shouldLogout =
+        await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: const Text(
+            'Log out?',
+          ),
+          content: const Text(
+            'You will need to sign in again to access your ForgeFit account.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(
+                  dialogContext,
+                ).pop(false);
+              },
+              child: const Text(
+                'Cancel',
+              ),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.of(
+                  dialogContext,
+                ).pop(true);
+              },
+              child: const Text(
+                'Log Out',
+              ),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (shouldLogout != true) {
+      return;
+    }
+
+    try {
+      await appState.logout();
+
+      if (!mounted) {
+        return;
+      }
+
+      Navigator.of(context)
+          .pushAndRemoveUntil(
+        MaterialPageRoute(
+          builder: (context) =>
+              const LoginScreen(),
+        ),
+        (route) => false,
+      );
+    } catch (error) {
+      if (!mounted) {
+        return;
+      }
+
+      ScaffoldMessenger.of(context)
+          .showSnackBar(
+        SnackBar(
+          content: Text(
+            error
+                .toString()
+                .replaceFirst(
+                  'Exception: ',
+                  '',
+                ),
+          ),
+        ),
+      );
+    }
   }
 
   Future<void> _editProfile(
@@ -229,9 +296,8 @@ class _ProfileScreenState
                   this.context,
                 ).showSnackBar(
                   SnackBar(
-                    content: Text(
-                      message,
-                    ),
+                    content:
+                        Text(message),
                   ),
                 );
 
@@ -519,6 +585,14 @@ class _ProfileScreenState
               Icons.edit_outlined,
             ),
           ),
+
+          IconButton(
+            tooltip: 'Log Out',
+            onPressed: _logout,
+            icon: const Icon(
+              Icons.logout,
+            ),
+          ),
         ],
       ),
 
@@ -680,6 +754,37 @@ class _ProfileScreenState
                       ),
                     ),
                   ),
+                ),
+
+                const SizedBox(
+                  height: 12,
+                ),
+
+                SizedBox(
+                  width:
+                      double.infinity,
+                  height: 52,
+                  child:
+                      OutlinedButton.icon(
+                    onPressed: _logout,
+                    icon: const Icon(
+                      Icons.logout,
+                    ),
+                    label:
+                        const Text(
+                      'Log Out',
+                      style:
+                          TextStyle(
+                        fontSize: 16,
+                        fontWeight:
+                            FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ),
+
+                const SizedBox(
+                  height: 24,
                 ),
               ],
             ),
