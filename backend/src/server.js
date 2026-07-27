@@ -7,6 +7,10 @@ const workoutRoutes = require(
   "./routes/workoutRoutes"
 );
 
+const profileRoutes = require(
+  "./routes/profileRoutes"
+);
+
 dotenv.config();
 
 const app = express();
@@ -45,6 +49,12 @@ app.get("/api/health", (req, res) => {
 app.use(
   "/api/workouts",
   workoutRoutes
+);
+
+// Profile routes
+app.use(
+  "/api/profile",
+  profileRoutes
 );
 
 async function startServer() {

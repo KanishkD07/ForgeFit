@@ -6,10 +6,12 @@ class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
 
   @override
-  State<ProfileScreen> createState() => _ProfileScreenState();
+  State<ProfileScreen> createState() =>
+      _ProfileScreenState();
 }
 
-class _ProfileScreenState extends State<ProfileScreen> {
+class _ProfileScreenState
+    extends State<ProfileScreen> {
   final AppState appState = AppState.instance;
 
   @override
@@ -32,92 +34,132 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Future<void> _editProfile() async {
     final profile = appState.profile;
 
-    final nameController = TextEditingController(
+    if (profile == null) {
+      return;
+    }
+
+    final nameController =
+        TextEditingController(
       text: profile.name,
     );
 
-    final heightController = TextEditingController(
+    final heightController =
+        TextEditingController(
       text: formatNumber(profile.height),
     );
 
-    final weightController = TextEditingController(
+    final weightController =
+        TextEditingController(
       text: formatNumber(profile.weight),
     );
 
-    final goalController = TextEditingController(
+    final goalController =
+        TextEditingController(
       text: profile.goal,
     );
 
-    final result = await showDialog<ProfileEditResult>(
+    final result =
+        await showDialog<ProfileEditResult>(
       context: context,
       builder: (dialogContext) {
         return AlertDialog(
-          title: const Text("Edit Profile"),
+          title: const Text(
+            "Edit Profile",
+          ),
 
           content: SingleChildScrollView(
             child: Column(
-              mainAxisSize: MainAxisSize.min,
+              mainAxisSize:
+                  MainAxisSize.min,
               children: [
                 TextField(
-                  controller: nameController,
-                  textCapitalization: TextCapitalization.words,
-                  decoration: const InputDecoration(
+                  controller:
+                      nameController,
+                  textCapitalization:
+                      TextCapitalization
+                          .words,
+                  decoration:
+                      const InputDecoration(
                     labelText: "Name",
                     prefixIcon: Icon(
                       Icons.person_outline,
                     ),
-                    border: OutlineInputBorder(),
+                    border:
+                        OutlineInputBorder(),
                   ),
                 ),
 
-                const SizedBox(height: 14),
+                const SizedBox(
+                  height: 14,
+                ),
 
                 TextField(
-                  controller: heightController,
+                  controller:
+                      heightController,
                   keyboardType:
-                      const TextInputType.numberWithOptions(
+                      const TextInputType
+                          .numberWithOptions(
                     decimal: true,
                   ),
-                  decoration: const InputDecoration(
+                  decoration:
+                      const InputDecoration(
                     labelText: "Height",
                     suffixText: "cm",
-                    prefixIcon: Icon(Icons.height),
-                    border: OutlineInputBorder(),
+                    prefixIcon: Icon(
+                      Icons.height,
+                    ),
+                    border:
+                        OutlineInputBorder(),
                   ),
                 ),
 
-                const SizedBox(height: 14),
+                const SizedBox(
+                  height: 14,
+                ),
 
                 TextField(
-                  controller: weightController,
+                  controller:
+                      weightController,
                   keyboardType:
-                      const TextInputType.numberWithOptions(
+                      const TextInputType
+                          .numberWithOptions(
                     decimal: true,
                   ),
-                  decoration: const InputDecoration(
+                  decoration:
+                      const InputDecoration(
                     labelText: "Weight",
                     suffixText: "kg",
                     prefixIcon: Icon(
-                      Icons.monitor_weight_outlined,
+                      Icons
+                          .monitor_weight_outlined,
                     ),
-                    border: OutlineInputBorder(),
+                    border:
+                        OutlineInputBorder(),
                   ),
                 ),
 
-                const SizedBox(height: 14),
+                const SizedBox(
+                  height: 14,
+                ),
 
                 TextField(
-                  controller: goalController,
+                  controller:
+                      goalController,
                   textCapitalization:
-                      TextCapitalization.sentences,
+                      TextCapitalization
+                          .sentences,
                   maxLines: 3,
-                  decoration: const InputDecoration(
-                    labelText: "Training Goal",
-                    hintText: "What are you training for?",
+                  decoration:
+                      const InputDecoration(
+                    labelText:
+                        "Training Goal",
+                    hintText:
+                        "What are you training for?",
                     prefixIcon: Icon(
                       Icons.flag_outlined,
                     ),
-                    border: OutlineInputBorder(),
+                    border:
+                        OutlineInputBorder(),
                   ),
                 ),
               ],
@@ -127,24 +169,36 @@ class _ProfileScreenState extends State<ProfileScreen> {
           actions: [
             TextButton(
               onPressed: () {
-                Navigator.pop(dialogContext);
+                Navigator.pop(
+                  dialogContext,
+                );
               },
-              child: const Text("Cancel"),
+              child: const Text(
+                "Cancel",
+              ),
             ),
 
             ElevatedButton(
               onPressed: () {
-                final name = nameController.text.trim();
+                final name =
+                    nameController.text
+                        .trim();
 
-                final height = double.tryParse(
-                  heightController.text.trim(),
+                final height =
+                    double.tryParse(
+                  heightController.text
+                      .trim(),
                 );
 
-                final weight = double.tryParse(
-                  weightController.text.trim(),
+                final weight =
+                    double.tryParse(
+                  weightController.text
+                      .trim(),
                 );
 
-                final goal = goalController.text.trim();
+                final goal =
+                    goalController.text
+                        .trim();
 
                 if (name.isEmpty ||
                     goal.isEmpty ||
@@ -152,8 +206,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     weight == null ||
                     height <= 0 ||
                     weight <= 0) {
-                  ScaffoldMessenger.of(context)
-                      .showSnackBar(
+                  ScaffoldMessenger.of(
+                    context,
+                  ).showSnackBar(
                     const SnackBar(
                       content: Text(
                         "Enter valid profile details.",
@@ -174,7 +229,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ),
                 );
               },
-              child: const Text("Save"),
+              child: const Text(
+                "Save",
+              ),
             ),
           ],
         );
@@ -188,32 +245,58 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
     if (result == null) return;
 
-    appState.updateProfile(
-      name: result.name,
-      height: result.height,
-      weight: result.weight,
-      goal: result.goal,
-    );
+    try {
+      await appState.updateProfile(
+        name: result.name,
+        height: result.height,
+        weight: result.weight,
+        goal: result.goal,
+      );
 
-    if (!mounted) return;
+      if (!mounted) return;
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text("Profile updated"),
-      ),
-    );
+      ScaffoldMessenger.of(context)
+          .showSnackBar(
+        const SnackBar(
+          content: Text(
+            "Profile updated",
+          ),
+        ),
+      );
+    } catch (error) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context)
+          .showSnackBar(
+        const SnackBar(
+          content: Text(
+            "Couldn't update profile. Check the backend.",
+          ),
+        ),
+      );
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     final profile = appState.profile;
 
+    if (profile == null) {
+      return const Scaffold(
+        body: Center(
+          child:
+              CircularProgressIndicator(),
+        ),
+      );
+    }
+
     return Scaffold(
       appBar: AppBar(
         title: const Text(
           "Profile",
           style: TextStyle(
-            fontWeight: FontWeight.bold,
+            fontWeight:
+                FontWeight.bold,
           ),
         ),
         actions: [
@@ -228,7 +311,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
       ),
 
       body: SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(
+        padding:
+            const EdgeInsets.fromLTRB(
           20,
           12,
           20,
@@ -241,12 +325,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
             CircleAvatar(
               radius: 55,
               backgroundColor:
-                  Colors.red.withValues(alpha: 0.12),
+                  Colors.red.withValues(
+                alpha: 0.12,
+              ),
               child: Text(
-                getInitial(profile.name),
+                getInitial(
+                  profile.name,
+                ),
                 style: const TextStyle(
                   fontSize: 42,
-                  fontWeight: FontWeight.bold,
+                  fontWeight:
+                      FontWeight.bold,
                   color: Colors.red,
                 ),
               ),
@@ -256,10 +345,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
             Text(
               profile.name,
-              textAlign: TextAlign.center,
+              textAlign:
+                  TextAlign.center,
               style: const TextStyle(
                 fontSize: 28,
-                fontWeight: FontWeight.bold,
+                fontWeight:
+                    FontWeight.bold,
               ),
             ),
 
@@ -267,7 +358,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
             Text(
               profile.goal,
-              textAlign: TextAlign.center,
+              textAlign:
+                  TextAlign.center,
               style: const TextStyle(
                 fontSize: 14,
                 color: Colors.grey,
@@ -293,8 +385,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
                 Expanded(
                   child: ProfileStatCard(
-                    icon:
-                        Icons.monitor_weight_outlined,
+                    icon: Icons
+                        .monitor_weight_outlined,
                     value: formatNumber(
                       profile.weight,
                     ),
@@ -311,7 +403,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
               children: [
                 Expanded(
                   child: ProfileStatCard(
-                    icon: Icons.fitness_center,
+                    icon: Icons
+                        .fitness_center,
                     value:
                         "${appState.totalWorkouts}",
                     label: "Workouts",
@@ -323,8 +416,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
                 Expanded(
                   child: ProfileStatCard(
-                    icon:
-                        Icons.emoji_events_outlined,
+                    icon: Icons
+                        .emoji_events_outlined,
                     value:
                         "${appState.totalPersonalRecords}",
                     label: "PRs",
@@ -345,8 +438,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
             const SizedBox(height: 12),
 
             ProfileInfoCard(
-              icon:
-                  Icons.calendar_month_outlined,
+              icon: Icons
+                  .calendar_month_outlined,
               title: "Member Since",
               value: formatMemberSince(
                 profile.memberSince,
@@ -356,8 +449,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
             const SizedBox(height: 12),
 
             ProfileInfoCard(
-              icon: Icons.bar_chart_rounded,
-              title: "Total Volume Lifted",
+              icon:
+                  Icons.bar_chart_rounded,
+              title:
+                  "Total Volume Lifted",
               value:
                   "${formatCompactVolume(appState.totalVolume)} kg",
             ),
@@ -366,9 +461,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
             ProfileInfoCard(
               icon: Icons.timer_outlined,
-              title: "Total Training Time",
+              title:
+                  "Total Training Time",
               value: formatTrainingTime(
-                appState.totalTrainingSeconds,
+                appState
+                    .totalTrainingSeconds,
               ),
             ),
 
@@ -377,7 +474,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
             SizedBox(
               width: double.infinity,
               height: 54,
-              child: OutlinedButton.icon(
+              child:
+                  OutlinedButton.icon(
                 onPressed: _editProfile,
                 icon: const Icon(
                   Icons.edit_outlined,
@@ -386,7 +484,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   "Edit Profile",
                   style: TextStyle(
                     fontSize: 16,
-                    fontWeight: FontWeight.bold,
+                    fontWeight:
+                        FontWeight.bold,
                   ),
                 ),
               ),
@@ -412,7 +511,8 @@ class ProfileEditResult {
   });
 }
 
-class ProfileStatCard extends StatelessWidget {
+class ProfileStatCard
+    extends StatelessWidget {
   final IconData icon;
   final String value;
   final String label;
@@ -430,7 +530,8 @@ class ProfileStatCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Card(
       child: Padding(
-        padding: const EdgeInsets.symmetric(
+        padding:
+            const EdgeInsets.symmetric(
           vertical: 22,
           horizontal: 12,
         ),
@@ -447,23 +548,32 @@ class ProfileStatCard extends StatelessWidget {
             FittedBox(
               child: Row(
                 mainAxisAlignment:
-                    MainAxisAlignment.center,
+                    MainAxisAlignment
+                        .center,
                 children: [
                   Text(
                     value,
-                    style: const TextStyle(
+                    style:
+                        const TextStyle(
                       fontSize: 22,
-                      fontWeight: FontWeight.bold,
+                      fontWeight:
+                          FontWeight
+                              .bold,
                     ),
                   ),
 
-                  if (unit.isNotEmpty) ...[
-                    const SizedBox(width: 4),
+                  if (unit
+                      .isNotEmpty) ...[
+                    const SizedBox(
+                      width: 4,
+                    ),
                     Text(
                       unit,
-                      style: const TextStyle(
+                      style:
+                          const TextStyle(
                         fontSize: 13,
-                        color: Colors.grey,
+                        color:
+                            Colors.grey,
                       ),
                     ),
                   ],
@@ -486,7 +596,8 @@ class ProfileStatCard extends StatelessWidget {
   }
 }
 
-class ProfileInfoCard extends StatelessWidget {
+class ProfileInfoCard
+    extends StatelessWidget {
   final IconData icon;
   final String title;
   final String value;
@@ -502,7 +613,8 @@ class ProfileInfoCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Card(
       child: Padding(
-        padding: const EdgeInsets.all(18),
+        padding:
+            const EdgeInsets.all(18),
         child: Row(
           children: [
             Icon(
@@ -516,23 +628,31 @@ class ProfileInfoCard extends StatelessWidget {
             Expanded(
               child: Column(
                 crossAxisAlignment:
-                    CrossAxisAlignment.start,
+                    CrossAxisAlignment
+                        .start,
                 children: [
                   Text(
                     title,
-                    style: const TextStyle(
-                      color: Colors.grey,
+                    style:
+                        const TextStyle(
+                      color:
+                          Colors.grey,
                       fontSize: 13,
                     ),
                   ),
 
-                  const SizedBox(height: 5),
+                  const SizedBox(
+                    height: 5,
+                  ),
 
                   Text(
                     value,
-                    style: const TextStyle(
+                    style:
+                        const TextStyle(
                       fontSize: 16,
-                      fontWeight: FontWeight.w600,
+                      fontWeight:
+                          FontWeight
+                              .w600,
                     ),
                   ),
                 ],
@@ -555,7 +675,9 @@ String getInitial(String name) {
   return trimmed[0].toUpperCase();
 }
 
-String formatMemberSince(DateTime date) {
+String formatMemberSince(
+  DateTime date,
+) {
   const months = [
     "January",
     "February",
@@ -574,10 +696,16 @@ String formatMemberSince(DateTime date) {
   return "${months[date.month - 1]} ${date.year}";
 }
 
-String formatTrainingTime(int seconds) {
+String formatTrainingTime(
+  int seconds,
+) {
   final hours = seconds ~/ 3600;
-  final minutes = (seconds % 3600) ~/ 60;
-  final remainingSeconds = seconds % 60;
+
+  final minutes =
+      (seconds % 3600) ~/ 60;
+
+  final remainingSeconds =
+      seconds % 60;
 
   if (hours > 0) {
     return "${hours}h ${minutes}m";
@@ -590,7 +718,9 @@ String formatTrainingTime(int seconds) {
   return "${remainingSeconds}s";
 }
 
-String formatCompactVolume(double volume) {
+String formatCompactVolume(
+  double volume,
+) {
   if (volume >= 1000000) {
     return "${(volume / 1000000).toStringAsFixed(1)}M";
   }
@@ -603,7 +733,8 @@ String formatCompactVolume(double volume) {
 }
 
 String formatNumber(double value) {
-  if (value == value.roundToDouble()) {
+  if (value ==
+      value.roundToDouble()) {
     return value.toInt().toString();
   }
 

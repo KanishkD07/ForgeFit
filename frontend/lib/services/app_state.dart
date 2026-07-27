@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 
 import '../models/user_profile.dart';
 import '../models/workout.dart';
+import 'profile_api.dart';
 import 'workout_api.dart';
 
 class AppState extends ChangeNotifier {
@@ -10,15 +11,15 @@ class AppState extends ChangeNotifier {
 
   AppState._internal();
 
-  final UserProfile profile =
-      UserProfile(
-    name: "Kanishk",
-    height: 175,
-    weight: 78,
-    goal:
-        "Build strength and an athletic physique",
-    memberSince: DateTime(2026, 7),
-  );
+  UserProfile? _profile;
+
+  UserProfile? get profile =>
+      _profile;
+
+  bool _loadingProfile = false;
+
+  bool get loadingProfile =>
+      _loadingProfile;
 
   final List<WorkoutData> _workouts =
       [];
@@ -51,7 +52,80 @@ class AppState extends ChangeNotifier {
     );
   }
 
-  // CREATE
+  // PROFILE READ
+  Future<void> loadProfile() async {
+    if (_loadingProfile) return;
+
+    _loadingProfile = true;
+    notifyListeners();
+
+    try {
+      _profile =
+          await ProfileApi.getProfile();
+    } finally {
+      _loadingProfile = false;
+      notifyListeners();
+    }
+  }
+
+  // PROFILE UPDATE
+  Future<UserProfile> updateProfile({
+    required String name,
+    required double height,
+    required double weight,
+    required String goal,
+  }) async {
+    final currentProfile = _profile;
+
+    if (currentProfile == null) {
+      throw Exception(
+        "Profile has not been loaded",
+      );
+    }
+
+    final profileToUpdate =
+        UserProfile(
+      id: currentProfile.id,
+      name: name,
+      height: height,
+      weight: weight,
+      goal: goal,
+      memberSince:
+          currentProfile.memberSince,
+    );
+
+    final updatedProfile =
+        await ProfileApi.updateProfile(
+      profileToUpdate,
+    );
+
+    _profile = updatedProfile;
+
+    notifyListeners();
+
+    return updatedProfile;
+  }
+
+  Future<void> updateWeight(
+    double weight,
+  ) async {
+    final currentProfile = _profile;
+
+    if (currentProfile == null) {
+      throw Exception(
+        "Profile has not been loaded",
+      );
+    }
+
+    await updateProfile(
+      name: currentProfile.name,
+      height: currentProfile.height,
+      weight: weight,
+      goal: currentProfile.goal,
+    );
+  }
+
+  // WORKOUT CREATE
   Future<WorkoutData> saveWorkout(
     WorkoutData workout,
   ) async {
@@ -70,7 +144,7 @@ class AppState extends ChangeNotifier {
     return savedWorkout;
   }
 
-  // READ
+  // WORKOUT READ
   Future<void> loadWorkouts() async {
     if (_loadingWorkouts) return;
 
@@ -91,7 +165,7 @@ class AppState extends ChangeNotifier {
     }
   }
 
-  // UPDATE
+  // WORKOUT UPDATE
   Future<WorkoutData> updateWorkout(
     WorkoutData workout,
   ) async {
@@ -122,7 +196,7 @@ class AppState extends ChangeNotifier {
     return updatedWorkout;
   }
 
-  // DELETE
+  // WORKOUT DELETE
   Future<void> deleteWorkout(
     String id,
   ) async {
@@ -132,25 +206,6 @@ class AppState extends ChangeNotifier {
       (workout) =>
           workout.id == id,
     );
-
-    notifyListeners();
-  }
-
-  void updateWeight(double weight) {
-    profile.weight = weight;
-    notifyListeners();
-  }
-
-  void updateProfile({
-    required String name,
-    required double height,
-    required double weight,
-    required String goal,
-  }) {
-    profile.name = name;
-    profile.height = height;
-    profile.weight = weight;
-    profile.goal = goal;
 
     notifyListeners();
   }
@@ -253,6 +308,7 @@ class AppState extends ChangeNotifier {
 
   void clearWorkouts() {
     _workouts.clear();
+
     notifyListeners();
   }
 }

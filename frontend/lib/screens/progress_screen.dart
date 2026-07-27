@@ -31,7 +31,18 @@ class _ProgressScreenState extends State<ProgressScreen> {
   }
 
   @override
+  @override
   Widget build(BuildContext context) {
+    final profile = appState.profile;
+
+    if (profile == null) {
+      return const Scaffold(
+        body: Center(
+          child: CircularProgressIndicator(),
+        ),
+      );
+    }
+
     final workouts = appState.workouts;
     final records = appState.personalRecords;
 
@@ -85,7 +96,7 @@ class _ProgressScreenState extends State<ProgressScreen> {
                   child: ProgressStatCard(
                     icon: Icons.monitor_weight_outlined,
                     value:
-                        "${formatNumber(appState.profile.weight)} kg",
+                        "${formatNumber(profile.weight)} kg",
                     label: "Body Weight",
                   ),
                 ),
@@ -226,7 +237,7 @@ class _ProgressScreenState extends State<ProgressScreen> {
             const SizedBox(height: 14),
 
             CurrentWeightCard(
-              weight: appState.profile.weight,
+              weight: profile.weight,
             ),
 
             const SizedBox(height: 32),

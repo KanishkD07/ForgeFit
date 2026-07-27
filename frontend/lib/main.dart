@@ -1,24 +1,8 @@
 import 'package:flutter/material.dart';
 
 import 'screens/splash_screen.dart';
-import 'services/app_state.dart';
 
-Future<void> main() async {
-  WidgetsFlutterBinding.ensureInitialized();
-
-  try {
-    await AppState.instance.loadWorkouts();
-
-    debugPrint(
-      'Workouts loaded successfully: '
-      '${AppState.instance.totalWorkouts}',
-    );
-  } catch (error) {
-    debugPrint(
-      'Failed to load workouts: $error',
-    );
-  }
-
+void main() {
   runApp(const ForgeFit());
 }
 

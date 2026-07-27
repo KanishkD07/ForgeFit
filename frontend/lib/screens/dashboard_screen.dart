@@ -117,6 +117,13 @@ class HomeScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final profile = appState.profile;
+
+    if (profile == null) {
+      return const Center(
+      child: CircularProgressIndicator(),
+      );
+    }
+
     final latestWorkout = appState.latestWorkout;
     final records = appState.personalRecords;
 
