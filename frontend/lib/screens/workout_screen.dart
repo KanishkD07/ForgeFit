@@ -2,9 +2,11 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import '../models/exercise_library.dart';
 import '../models/routine.dart';
 import '../models/workout.dart';
 import '../services/app_state.dart';
+import 'exercise_picker.dart';
 import 'workout_summary_screen.dart';
 
 class WorkoutScreen extends StatefulWidget {
@@ -434,90 +436,24 @@ class _WorkoutScreenState
       return;
     }
 
-    final controller =
-        TextEditingController();
-
-    final String? name =
-        await showDialog<String>(
-      context: context,
-      builder: (dialogContext) {
-        return AlertDialog(
-          title:
-              const Text(
-            "Add Exercise",
-          ),
-          content: TextField(
-            controller: controller,
-            autofocus: true,
-            textCapitalization:
-                TextCapitalization.words,
-            textInputAction:
-                TextInputAction.done,
-            decoration:
-                const InputDecoration(
-              labelText:
-                  "Exercise Name",
-              hintText:
-                  "e.g. Bench Press",
-              prefixIcon: Icon(
-                Icons.fitness_center,
-              ),
-              border:
-                  OutlineInputBorder(),
-            ),
-            onSubmitted: (value) {
-              final exerciseName =
-                  value.trim();
-
-              if (exerciseName
-                  .isNotEmpty) {
-                Navigator.pop(
-                  dialogContext,
-                  exerciseName,
-                );
-              }
-            },
-          ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.pop(
-                  dialogContext,
-                );
-              },
-              child:
-                  const Text(
-                "Cancel",
-              ),
-            ),
-            ElevatedButton(
-              onPressed: () {
-                final exerciseName =
-                    controller.text
-                        .trim();
-
-                if (exerciseName
-                    .isNotEmpty) {
-                  Navigator.pop(
-                    dialogContext,
-                    exerciseName,
-                  );
-                }
-              },
-              child:
-                  const Text(
-                "Add",
-              ),
-            ),
-          ],
-        );
-      },
+    final selected =
+        await Navigator.push<LibraryExercise>(
+      context,
+      MaterialPageRoute(
+        builder: (context) =>
+            ExercisePicker(
+          excludedExercises:
+              exercises
+                  .map(
+                    (exercise) =>
+                        exercise.name,
+                  )
+                  .toSet(),
+        ),
+      ),
     );
 
-    controller.dispose();
-
-    if (name == null ||
-        name.trim().isEmpty ||
+    if (selected == null ||
         !mounted) {
       return;
     }
@@ -525,7 +461,7 @@ class _WorkoutScreenState
     setState(() {
       exercises.add(
         WorkoutExercise(
-          name: name.trim(),
+          name: selected.name,
           sets: [
             WorkoutSet(),
           ],
@@ -2046,13 +1982,9 @@ class _RoutineEditorDialogState
         widget.routine;
 
     if (existing == null) {
-      exerciseDrafts = [
-        RoutineExerciseDraft(
-          name: "",
-          defaultSets: 3,
-        ),
-      ];
-    } else {
+      exerciseDrafts = [];
+    }
+    else {
       exerciseDrafts =
           existing.exercises
               .map(
@@ -2081,11 +2013,40 @@ class _RoutineEditorDialogState
     super.dispose();
   }
 
-  void addExercise() {
+  Future<void> addExercise() async {
+    final selected =
+        await Navigator.push<LibraryExercise>(
+      context,
+      MaterialPageRoute(
+        builder: (context) =>
+            ExercisePicker(
+          excludedExercises:
+              exerciseDrafts
+                  .map(
+                    (draft) =>
+                        draft
+                            .nameController
+                            .text
+                            .trim(),
+                  )
+                  .where(
+                    (name) =>
+                        name.isNotEmpty,
+                  )
+                  .toSet(),
+        ),
+      ),
+    );
+
+    if (selected == null ||
+        !mounted) {
+      return;
+    }
+
     setState(() {
       exerciseDrafts.add(
         RoutineExerciseDraft(
-          name: "",
+          name: selected.name,
           defaultSets: 3,
         ),
       );
@@ -2095,15 +2056,8 @@ class _RoutineEditorDialogState
   void removeExercise(
     int index,
   ) {
-    if (exerciseDrafts
-            .length ==
-        1) {
-      return;
-    }
-
     final removed =
-        exerciseDrafts
-            .removeAt(
+        exerciseDrafts.removeAt(
       index,
     );
 
@@ -2148,6 +2102,13 @@ class _RoutineEditorDialogState
     if (routineName.isEmpty) {
       _showError(
         "Enter a routine name.",
+      );
+
+      return;
+    }
+    if (exerciseDrafts.isEmpty) {
+      _showError(
+        "Add at least one exercise.",
       );
 
       return;
@@ -2350,22 +2311,44 @@ class _RoutineEditorDialogState
                                     .start,
                             children: [
                               Expanded(
-                                child:
-                                    TextField(
-                                  controller:
-                                      draft
-                                          .nameController,
-                                  textCapitalization:
-                                      TextCapitalization
-                                          .words,
-                                  decoration:
-                                      InputDecoration(
-                                    labelText:
-                                        "Exercise ${index + 1}",
-                                    hintText:
-                                        "e.g. Bench Press",
-                                    border:
-                                        const OutlineInputBorder(),
+                                child: Container(
+                                  constraints:
+                                      const BoxConstraints(
+                                    minHeight: 56,
+                                  ),
+                                  padding:
+                                      const EdgeInsets.symmetric(
+                                    horizontal: 14,
+                                    vertical: 10,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    border: Border.all(
+                                      color:
+                                          const Color(0xFF555555),
+                                    ),
+                                    borderRadius:
+                                        BorderRadius.circular(4),
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      const Icon(
+                                        Icons.fitness_center,
+                                        color: Colors.red,
+                                        size: 20,
+                                      ),
+                                      const SizedBox(width: 10),
+                                      Expanded(
+                                        child: Text(
+                                          draft
+                                              .nameController
+                                              .text,
+                                          style: const TextStyle(
+                                            fontWeight:
+                                                FontWeight.w600,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
                                   ),
                                 ),
                               ),
@@ -2423,14 +2406,11 @@ class _RoutineEditorDialogState
                                 tooltip:
                                     "Remove Exercise",
                                 onPressed:
-                                    exerciseDrafts.length >
-                                            1
-                                        ? () {
-                                            removeExercise(
-                                              index,
-                                            );
-                                          }
-                                        : null,
+                                    () {
+                                  removeExercise(
+                                    index,
+                                  );
+                                },
                                 icon:
                                     const Icon(
                                   Icons
