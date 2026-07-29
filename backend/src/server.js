@@ -15,62 +15,101 @@ const authRoutes = require(
   "./routes/authRoutes"
 );
 
+const routineRoutes = require(
+  "./routes/routineRoutes"
+);
+
 dotenv.config();
 
 const app = express();
 
-const PORT = process.env.PORT || 3000;
-const MONGODB_URI = process.env.MONGODB_URI;
+const PORT =
+  process.env.PORT || 3000;
 
-// Middleware
+const MONGODB_URI =
+  process.env.MONGODB_URI;
 
-// Allow ForgeFit Flutter Web to access the API
+// =========================
+// MIDDLEWARE
+// =========================
+
 app.use(cors());
 
-app.use(express.json());
+app.use(
+  express.json()
+);
 
-// Root route
+// =========================
+// ROOT
+// =========================
+
 app.get("/", (req, res) => {
   res.json({
-    message: "ForgeFit API is running",
+    message:
+      "ForgeFit API is running",
   });
 });
 
-// Health check
-app.get("/api/health", (req, res) => {
-  res.json({
-    status: "OK",
-    service: "ForgeFit API",
-    database:
-      mongoose.connection.readyState === 1
-        ? "connected"
-        : "disconnected",
-    timestamp: new Date().toISOString(),
-  });
-});
+// =========================
+// HEALTH CHECK
+// =========================
 
-// Workout routes
-app.use(
-  "/api/workouts",
-  workoutRoutes
+app.get(
+  "/api/health",
+  (req, res) => {
+    res.json({
+      status: "OK",
+
+      service:
+        "ForgeFit API",
+
+      database:
+        mongoose.connection
+          .readyState === 1
+          ? "connected"
+          : "disconnected",
+
+      timestamp:
+        new Date()
+          .toISOString(),
+    });
+  }
 );
 
-// Profile routes
-app.use(
-  "/api/profile",
-  profileRoutes
-);
+// =========================
+// API ROUTES
+// =========================
 
 app.use(
   "/api/auth",
   authRoutes
 );
 
+app.use(
+  "/api/profile",
+  profileRoutes
+);
+
+app.use(
+  "/api/workouts",
+  workoutRoutes
+);
+
+app.use(
+  "/api/routines",
+  routineRoutes
+);
+
+// =========================
+// START SERVER
+// =========================
+
 async function startServer() {
   try {
     if (!MONGODB_URI) {
       throw new Error(
-        "MONGODB_URI is missing from the .env file"
+        "MONGODB_URI is missing " +
+        "from the .env file"
       );
     }
 
@@ -82,11 +121,14 @@ async function startServer() {
       "MongoDB connected successfully"
     );
 
-    app.listen(PORT, () => {
-      console.log(
-        `ForgeFit API running on port ${PORT}`
-      );
-    });
+    app.listen(
+      PORT,
+      () => {
+        console.log(
+          `ForgeFit API running on port ${PORT}`
+        );
+      }
+    );
   } catch (error) {
     console.error(
       "MongoDB connection failed:"
