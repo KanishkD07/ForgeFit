@@ -83,6 +83,15 @@ class _ProgressScreenState extends State<ProgressScreen> {
             ),
           );
 
+    final exerciseAnalytics =
+        buildExerciseAnalytics(workouts);
+
+    final trainingInsights =
+        buildTrainingInsights(
+      workouts,
+      exerciseAnalytics,
+    );
+
     return Scaffold(
       appBar: AppBar(
         title: const Text(
@@ -263,6 +272,66 @@ class _ProgressScreenState extends State<ProgressScreen> {
               TrainingTrendsCard(
                 workouts: workouts,
               ),
+
+              // =====================
+              // EXERCISE ANALYTICS
+              // =====================
+
+              const SizedBox(height: 34),
+
+              const SectionTitle(
+                title:
+                    'Exercise Analytics',
+                subtitle:
+                    'See which movements make up your training',
+              ),
+
+              const SizedBox(height: 14),
+
+              if (exerciseAnalytics.isEmpty)
+                const EmptySectionCard(
+                  icon: Icons
+                      .leaderboard_outlined,
+                  title:
+                      'No exercise analytics yet',
+                  message:
+                      'Complete workouts with exercises and sets to build your training breakdown.',
+                )
+              else
+                ExerciseAnalyticsCard(
+                  analytics:
+                      exerciseAnalytics,
+                ),
+
+              // =====================
+              // TRAINING INSIGHTS
+              // =====================
+
+              const SizedBox(height: 34),
+
+              const SectionTitle(
+                title:
+                    'Training Insights',
+                subtitle:
+                    'Useful takeaways from your recorded training',
+              ),
+
+              const SizedBox(height: 14),
+
+              if (trainingInsights.isEmpty)
+                const EmptySectionCard(
+                  icon: Icons
+                      .lightbulb_outline_rounded,
+                  title:
+                      'More training needed',
+                  message:
+                      'Record a few workouts and ForgeFit will start surfacing useful patterns here.',
+                )
+              else
+                TrainingInsightsCard(
+                  insights:
+                      trainingInsights,
+                ),
 
               // =====================
               // PERSONAL RECORDS
@@ -1860,6 +1929,757 @@ class WeeklyTrainingChart
             );
           },
         ),
+      ),
+    );
+  }
+}
+
+// =====================================================
+// EXERCISE ANALYTICS + TRAINING INSIGHTS
+// =====================================================
+
+class ExerciseAnalyticsData {
+  final String name;
+  final int workoutCount;
+  final int setCount;
+  final double volume;
+  final double bestWeight;
+  final DateTime latestDate;
+
+  const ExerciseAnalyticsData({
+    required this.name,
+    required this.workoutCount,
+    required this.setCount,
+    required this.volume,
+    required this.bestWeight,
+    required this.latestDate,
+  });
+}
+
+class TrainingInsightData {
+  final IconData icon;
+  final String title;
+  final String message;
+
+  const TrainingInsightData({
+    required this.icon,
+    required this.title,
+    required this.message,
+  });
+}
+
+List<ExerciseAnalyticsData>
+    buildExerciseAnalytics(
+  List<WorkoutData> workouts,
+) {
+  final names =
+      <String, String>{};
+  final workoutCounts =
+      <String, int>{};
+  final setCounts =
+      <String, int>{};
+  final volumes =
+      <String, double>{};
+  final bestWeights =
+      <String, double>{};
+  final latestDates =
+      <String, DateTime>{};
+
+  for (final workout in workouts) {
+    final seenThisWorkout =
+        <String>{};
+
+    for (final exercise
+        in workout.exercises) {
+      final trimmed =
+          exercise.name.trim();
+
+      if (trimmed.isEmpty ||
+          exercise.sets.isEmpty) {
+        continue;
+      }
+
+      final key =
+          trimmed.toLowerCase();
+
+      names[key] ??= trimmed;
+
+      setCounts[key] =
+          (setCounts[key] ?? 0) +
+              exercise.sets.length;
+
+      volumes[key] =
+          (volumes[key] ?? 0) +
+              exercise.volume;
+
+      final currentBest =
+          bestWeights[key] ?? 0;
+
+      if (exercise.bestWeight >
+          currentBest) {
+        bestWeights[key] =
+            exercise.bestWeight;
+      }
+
+      final latest =
+          latestDates[key];
+
+      if (latest == null ||
+          workout.date
+              .isAfter(latest)) {
+        latestDates[key] =
+            workout.date;
+      }
+
+      if (seenThisWorkout.add(key)) {
+        workoutCounts[key] =
+            (workoutCounts[key] ??
+                    0) +
+                1;
+      }
+    }
+  }
+
+  final result =
+      names.entries.map(
+    (entry) {
+      final key = entry.key;
+
+      return ExerciseAnalyticsData(
+        name: entry.value,
+        workoutCount:
+            workoutCounts[key] ?? 0,
+        setCount:
+            setCounts[key] ?? 0,
+        volume:
+            volumes[key] ?? 0,
+        bestWeight:
+            bestWeights[key] ?? 0,
+        latestDate:
+            latestDates[key] ??
+                DateTime.now(),
+      );
+    },
+  ).toList();
+
+  result.sort(
+    (a, b) {
+      final workoutCompare =
+          b.workoutCount.compareTo(
+        a.workoutCount,
+      );
+
+      if (workoutCompare != 0) {
+        return workoutCompare;
+      }
+
+      final setCompare =
+          b.setCount.compareTo(
+        a.setCount,
+      );
+
+      if (setCompare != 0) {
+        return setCompare;
+      }
+
+      return b.volume.compareTo(
+        a.volume,
+      );
+    },
+  );
+
+  return result;
+}
+
+List<TrainingInsightData>
+    buildTrainingInsights(
+  List<WorkoutData> workouts,
+  List<ExerciseAnalyticsData>
+      analytics,
+) {
+  if (workouts.isEmpty) {
+    return [];
+  }
+
+  final insights =
+      <TrainingInsightData>[];
+
+  final chronological =
+      [...workouts]
+        ..sort(
+          (a, b) =>
+              a.date.compareTo(
+            b.date,
+          ),
+        );
+
+  final weeks =
+      buildWeeklyTrainingData(
+    workouts,
+  );
+
+  final currentWeek =
+      weeks.last;
+
+  final previousWeek =
+      weeks.length > 1
+          ? weeks[
+              weeks.length - 2]
+          : null;
+
+  if (currentWeek.workouts > 0) {
+    insights.add(
+      TrainingInsightData(
+        icon:
+            Icons.calendar_month_outlined,
+        title:
+            'This week',
+        message:
+            'You have completed ${currentWeek.workouts} '
+            '${currentWeek.workouts == 1 ? 'workout' : 'workouts'} '
+            'this week with ${formatCompactVolume(currentWeek.volume)} kg of recorded volume.',
+      ),
+    );
+  }
+
+  if (previousWeek != null &&
+      previousWeek.volume > 0 &&
+      currentWeek.volume > 0) {
+    final change =
+        calculateTrendChange(
+      currentWeek.volume,
+      previousWeek.volume,
+    );
+
+    if (change.abs() >= 5) {
+      insights.add(
+        TrainingInsightData(
+          icon: change > 0
+              ? Icons.trending_up
+              : Icons.trending_down,
+          title:
+              'Weekly volume',
+          message: change > 0
+              ? 'Your recorded volume is ${change.abs().toStringAsFixed(1)}% higher than last week.'
+              : 'Your recorded volume is ${change.abs().toStringAsFixed(1)}% lower than last week.',
+        ),
+      );
+    }
+  }
+
+  if (analytics.isNotEmpty) {
+    final mostTrained =
+        analytics.first;
+
+    insights.add(
+      TrainingInsightData(
+        icon:
+            Icons.fitness_center,
+        title:
+            'Most trained exercise',
+        message:
+            '${mostTrained.name} leads your training with ${mostTrained.workoutCount} '
+            '${mostTrained.workoutCount == 1 ? 'workout' : 'workouts'} and '
+            '${mostTrained.setCount} completed sets.',
+      ),
+    );
+
+    final volumeLeader =
+        [...analytics]
+          ..sort(
+            (a, b) =>
+                b.volume.compareTo(
+              a.volume,
+            ),
+          );
+
+    if (volumeLeader.first.volume >
+        0) {
+      insights.add(
+        TrainingInsightData(
+          icon:
+              Icons.bar_chart_rounded,
+          title:
+              'Volume leader',
+          message:
+              '${volumeLeader.first.name} has generated the most recorded volume at '
+              '${formatCompactVolume(volumeLeader.first.volume)} kg.',
+        ),
+      );
+    }
+  }
+
+  if (chronological.length >= 2) {
+    final firstDate =
+        chronological.first.date;
+
+    final lastDate =
+        chronological.last.date;
+
+    final spanDays =
+        lastDate
+            .difference(firstDate)
+            .inDays;
+
+    if (spanDays >= 7) {
+      final spanWeeks =
+          (spanDays + 1) / 7;
+
+      final average =
+          workouts.length /
+              spanWeeks;
+
+      insights.add(
+        TrainingInsightData(
+          icon:
+              Icons.repeat_rounded,
+          title:
+              'Training frequency',
+          message:
+              'Across your recorded history, you average about '
+              '${average.toStringAsFixed(1)} workouts per week.',
+        ),
+      );
+    }
+  }
+
+  return insights.take(4).toList();
+}
+
+class ExerciseAnalyticsCard
+    extends StatelessWidget {
+  final List<ExerciseAnalyticsData>
+      analytics;
+
+  const ExerciseAnalyticsCard({
+    super.key,
+    required this.analytics,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final visible =
+        analytics.take(6).toList();
+
+    final maxSets =
+        visible.fold<int>(
+      0,
+      (best, item) =>
+          item.setCount > best
+              ? item.setCount
+              : best,
+    );
+
+    return Card(
+      child: Padding(
+        padding:
+            const EdgeInsets.fromLTRB(
+          18,
+          20,
+          18,
+          18,
+        ),
+        child: Column(
+          crossAxisAlignment:
+              CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Expanded(
+                  child: Text(
+                    'Exercise Breakdown',
+                    style:
+                        TextStyle(
+                      fontSize: 18,
+                      fontWeight:
+                          FontWeight.bold,
+                    ),
+                  ),
+                ),
+                Text(
+                  '${analytics.length} '
+                  '${analytics.length == 1 ? 'exercise' : 'exercises'}',
+                  style:
+                      const TextStyle(
+                    color:
+                        Colors.grey,
+                    fontSize: 12,
+                  ),
+                ),
+              ],
+            ),
+
+            const SizedBox(height: 6),
+
+            const Text(
+              'Ranked by how often each exercise appears in your workouts',
+              style: TextStyle(
+                color: Colors.grey,
+                fontSize: 12,
+              ),
+            ),
+
+            const SizedBox(height: 22),
+
+            ...List.generate(
+              visible.length,
+              (index) {
+                final item =
+                    visible[index];
+
+                final ratio =
+                    maxSets <= 0
+                        ? 0.0
+                        : item.setCount /
+                            maxSets;
+
+                return Padding(
+                  padding:
+                      EdgeInsets.only(
+                    bottom:
+                        index ==
+                                visible.length -
+                                    1
+                            ? 0
+                            : 18,
+                  ),
+                  child:
+                      ExerciseAnalyticsRow(
+                    rank: index + 1,
+                    data: item,
+                    progress: ratio,
+                  ),
+                );
+              },
+            ),
+
+            if (analytics.length > 6) ...[
+              const SizedBox(height: 18),
+              Center(
+                child: Text(
+                  '+ ${analytics.length - 6} more exercises recorded',
+                  style:
+                      const TextStyle(
+                    color:
+                        Colors.grey,
+                    fontSize: 11,
+                  ),
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class ExerciseAnalyticsRow
+    extends StatelessWidget {
+  final int rank;
+  final ExerciseAnalyticsData data;
+  final double progress;
+
+  const ExerciseAnalyticsRow({
+    super.key,
+    required this.rank,
+    required this.data,
+    required this.progress,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment:
+          CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Container(
+              width: 30,
+              height: 30,
+              alignment:
+                  Alignment.center,
+              decoration:
+                  BoxDecoration(
+                color: rank == 1
+                    ? Colors.red
+                        .withValues(
+                          alpha: 0.15,
+                        )
+                    : const Color(
+                        0xFF181818,
+                      ),
+                borderRadius:
+                    BorderRadius
+                        .circular(8),
+              ),
+              child: Text(
+                '$rank',
+                style: TextStyle(
+                  fontWeight:
+                      FontWeight.bold,
+                  color: rank == 1
+                      ? Colors.red
+                      : Colors.grey,
+                ),
+              ),
+            ),
+
+            const SizedBox(width: 12),
+
+            Expanded(
+              child: Column(
+                crossAxisAlignment:
+                    CrossAxisAlignment
+                        .start,
+                children: [
+                  Text(
+                    data.name,
+                    maxLines: 1,
+                    overflow:
+                        TextOverflow
+                            .ellipsis,
+                    style:
+                        const TextStyle(
+                      fontWeight:
+                          FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(
+                    height: 3,
+                  ),
+                  Text(
+                    '${data.workoutCount} '
+                    '${data.workoutCount == 1 ? 'workout' : 'workouts'}'
+                    ' • ${data.setCount} sets',
+                    style:
+                        const TextStyle(
+                      color:
+                          Colors.grey,
+                      fontSize: 11,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            const SizedBox(width: 10),
+
+            Column(
+              crossAxisAlignment:
+                  CrossAxisAlignment.end,
+              children: [
+                Text(
+                  '${formatCompactVolume(data.volume)} kg',
+                  style:
+                      const TextStyle(
+                    fontWeight:
+                        FontWeight.bold,
+                    fontSize: 12,
+                  ),
+                ),
+                const SizedBox(
+                  height: 3,
+                ),
+                Text(
+                  'PR ${formatNumber(data.bestWeight)} kg',
+                  style:
+                      const TextStyle(
+                    color:
+                        Colors.grey,
+                    fontSize: 10,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+
+        const SizedBox(height: 10),
+
+        ClipRRect(
+          borderRadius:
+              BorderRadius.circular(6),
+          child:
+              LinearProgressIndicator(
+            value: progress.clamp(
+              0.0,
+              1.0,
+            ),
+            minHeight: 6,
+            backgroundColor:
+                const Color(
+              0xFF242424,
+            ),
+            valueColor:
+                const AlwaysStoppedAnimation<
+                    Color>(
+              Colors.red,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class TrainingInsightsCard
+    extends StatelessWidget {
+  final List<TrainingInsightData>
+      insights;
+
+  const TrainingInsightsCard({
+    super.key,
+    required this.insights,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      child: Padding(
+        padding:
+            const EdgeInsets.fromLTRB(
+          18,
+          20,
+          18,
+          18,
+        ),
+        child: Column(
+          crossAxisAlignment:
+              CrossAxisAlignment.start,
+          children: [
+            const Row(
+              children: [
+                Icon(
+                  Icons
+                      .auto_awesome_outlined,
+                  color: Colors.red,
+                  size: 22,
+                ),
+                SizedBox(width: 9),
+                Text(
+                  'ForgeFit Insights',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight:
+                        FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+
+            const SizedBox(height: 18),
+
+            ...List.generate(
+              insights.length,
+              (index) {
+                final insight =
+                    insights[index];
+
+                return Padding(
+                  padding:
+                      EdgeInsets.only(
+                    bottom:
+                        index ==
+                                insights.length -
+                                    1
+                            ? 0
+                            : 12,
+                  ),
+                  child:
+                      TrainingInsightTile(
+                    insight: insight,
+                  ),
+                );
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class TrainingInsightTile
+    extends StatelessWidget {
+  final TrainingInsightData insight;
+
+  const TrainingInsightTile({
+    super.key,
+    required this.insight,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding:
+          const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color:
+            const Color(0xFF181818),
+        borderRadius:
+            BorderRadius.circular(12),
+      ),
+      child: Row(
+        crossAxisAlignment:
+            CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 38,
+            height: 38,
+            decoration:
+                BoxDecoration(
+              color: Colors.red
+                  .withValues(
+                alpha: 0.12,
+              ),
+              borderRadius:
+                  BorderRadius
+                      .circular(10),
+            ),
+            child: Icon(
+              insight.icon,
+              color: Colors.red,
+              size: 20,
+            ),
+          ),
+
+          const SizedBox(width: 12),
+
+          Expanded(
+            child: Column(
+              crossAxisAlignment:
+                  CrossAxisAlignment
+                      .start,
+              children: [
+                Text(
+                  insight.title,
+                  style:
+                      const TextStyle(
+                    fontWeight:
+                        FontWeight.bold,
+                    fontSize: 13,
+                  ),
+                ),
+                const SizedBox(
+                  height: 5,
+                ),
+                Text(
+                  insight.message,
+                  style:
+                      const TextStyle(
+                    color:
+                        Colors.grey,
+                    fontSize: 12,
+                    height: 1.35,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
