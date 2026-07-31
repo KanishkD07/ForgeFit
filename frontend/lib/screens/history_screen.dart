@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../models/workout.dart';
 import '../services/app_state.dart';
-import 'edit_workout_screen.dart';
+import 'workout_detail_screen.dart';
 
 class HistoryScreen extends StatefulWidget {
   const HistoryScreen({super.key});
@@ -16,8 +16,6 @@ class _HistoryScreenState
     extends State<HistoryScreen> {
   final AppState appState =
       AppState.instance;
-
-  String? _deletingWorkoutId;
 
   @override
   void initState() {
@@ -34,149 +32,26 @@ class _HistoryScreenState
   }
 
   void _refresh() {
-    if (!mounted) return;
-
-    setState(() {});
+    if (mounted) {
+      setState(() {});
+    }
   }
 
-  Future<void> _editWorkout(
+  Future<void> _openWorkout(
     WorkoutData workout,
   ) async {
-    if (_deletingWorkoutId != null) {
-      return;
-    }
-
-    final updated =
-        await Navigator.push<bool>(
+    await Navigator.push(
       context,
       MaterialPageRoute(
         builder: (context) =>
-            EditWorkoutScreen(
+            WorkoutDetailScreen(
           workout: workout,
         ),
       ),
     );
 
-    if (updated == true && mounted) {
-      ScaffoldMessenger.of(context)
-          .clearSnackBars();
-
-      ScaffoldMessenger.of(context)
-          .showSnackBar(
-        const SnackBar(
-          content: Text(
-            "Workout updated successfully",
-          ),
-        ),
-      );
-    }
-  }
-
-  Future<void> _deleteWorkout(
-    WorkoutData workout,
-  ) async {
-    if (_deletingWorkoutId != null) {
-      return;
-    }
-
-    final shouldDelete =
-        await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) {
-        return AlertDialog(
-          title: const Text(
-            "Delete Workout?",
-          ),
-          content: Text(
-            "Delete the workout from "
-            "${formatDate(workout.date)}? "
-            "This cannot be undone.",
-          ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.pop(
-                  dialogContext,
-                  false,
-                );
-              },
-              child:
-                  const Text("Cancel"),
-            ),
-            TextButton(
-              onPressed: () {
-                Navigator.pop(
-                  dialogContext,
-                  true,
-                );
-              },
-              child: const Text(
-                "Delete",
-                style: TextStyle(
-                  color: Colors.red,
-                ),
-              ),
-            ),
-          ],
-        );
-      },
-    );
-
-    if (shouldDelete != true ||
-        !mounted) {
-      return;
-    }
-
-    setState(() {
-      _deletingWorkoutId =
-          workout.id;
-    });
-
-    try {
-      await appState.deleteWorkout(
-        workout.id,
-      );
-
-      if (!mounted) return;
-
-      ScaffoldMessenger.of(context)
-          .clearSnackBars();
-
-      ScaffoldMessenger.of(context)
-          .showSnackBar(
-        const SnackBar(
-          content: Text(
-            "Workout deleted",
-          ),
-        ),
-      );
-    } catch (error) {
-      if (!mounted) return;
-
-      ScaffoldMessenger.of(context)
-          .clearSnackBars();
-
-      ScaffoldMessenger.of(context)
-          .showSnackBar(
-        const SnackBar(
-          content: Text(
-            "Couldn't delete workout. "
-            "Please check the backend "
-            "and try again.",
-          ),
-        ),
-      );
-
-      debugPrint(
-        "Workout deletion failed: "
-        "$error",
-      );
-    } finally {
-      if (mounted) {
-        setState(() {
-          _deletingWorkoutId = null;
-        });
-      }
+    if (mounted) {
+      setState(() {});
     }
   }
 
@@ -188,397 +63,281 @@ class _HistoryScreenState
     return Scaffold(
       appBar: AppBar(
         title: const Text(
-          "Workout History",
+          'History',
           style: TextStyle(
-            fontWeight:
-                FontWeight.bold,
+            fontWeight: FontWeight.bold,
           ),
         ),
       ),
-      body: workouts.isEmpty
-          ? const EmptyHistoryState()
-          : ListView.separated(
-              padding:
-                  const EdgeInsets
-                      .fromLTRB(
-                20,
-                12,
-                20,
-                30,
-              ),
-              itemCount:
-                  workouts.length,
-              separatorBuilder:
-                  (_, __) =>
-                      const SizedBox(
-                height: 14,
-              ),
-              itemBuilder:
-                  (context, index) {
-                final workout =
-                    workouts[index];
 
-                return WorkoutHistoryCard(
-                  workout: workout,
-                  deleting:
-                      _deletingWorkoutId ==
-                          workout.id,
-                  actionsDisabled:
-                      _deletingWorkoutId !=
-                          null,
-                  onEdit: () {
-                    _editWorkout(
-                      workout,
-                    );
-                  },
-                  onDelete: () {
-                    _deleteWorkout(
-                      workout,
-                    );
-                  },
-                );
-              },
-            ),
+      body: appState.loadingWorkouts &&
+              workouts.isEmpty
+          ? const Center(
+              child:
+                  CircularProgressIndicator(),
+            )
+          : workouts.isEmpty
+              ? const _EmptyHistory()
+              : RefreshIndicator(
+                  onRefresh:
+                      appState.loadWorkouts,
+                  child: ListView.separated(
+                    physics:
+                        const AlwaysScrollableScrollPhysics(),
+                    padding:
+                        const EdgeInsets
+                            .fromLTRB(
+                      20,
+                      16,
+                      20,
+                      30,
+                    ),
+                    itemCount:
+                        workouts.length,
+                    separatorBuilder:
+                        (_, _) =>
+                            const SizedBox(
+                      height: 12,
+                    ),
+                    itemBuilder:
+                        (context, index) {
+                      final workout =
+                          workouts[index];
+
+                      return _WorkoutCard(
+                        workout: workout,
+                        onTap: () {
+                          _openWorkout(
+                            workout,
+                          );
+                        },
+                      );
+                    },
+                  ),
+                ),
     );
   }
 }
 
-class WorkoutHistoryCard
+class _WorkoutCard
     extends StatelessWidget {
   final WorkoutData workout;
+  final VoidCallback onTap;
 
-  final bool deleting;
-  final bool actionsDisabled;
-
-  final VoidCallback onEdit;
-  final VoidCallback onDelete;
-
-  const WorkoutHistoryCard({
-    super.key,
+  const _WorkoutCard({
     required this.workout,
-    required this.deleting,
-    required this.actionsDisabled,
-    required this.onEdit,
-    required this.onDelete,
+    required this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
+    final exerciseCount =
+        workout.exercises.length;
+
     return Card(
-      child: Padding(
-        padding:
-            const EdgeInsets.all(18),
-        child: Column(
-          crossAxisAlignment:
-              CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                const Icon(
-                  Icons
-                      .calendar_today_outlined,
-                  color: Colors.red,
-                  size: 20,
-                ),
-
-                const SizedBox(
-                  width: 10,
-                ),
-
-                Expanded(
-                  child: Text(
-                    formatDate(
-                      workout.date,
+      margin: EdgeInsets.zero,
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding:
+              const EdgeInsets.all(18),
+          child: Column(
+            crossAxisAlignment:
+                CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    width: 48,
+                    height: 48,
+                    decoration:
+                        BoxDecoration(
+                      color: Colors.red
+                          .withValues(
+                        alpha: 0.13,
+                      ),
+                      borderRadius:
+                          BorderRadius
+                              .circular(
+                        13,
+                      ),
                     ),
-                    style:
-                        const TextStyle(
-                      fontSize: 18,
-                      fontWeight:
-                          FontWeight.bold,
+                    child: const Icon(
+                      Icons
+                          .fitness_center,
+                      color: Colors.red,
+                      size: 23,
                     ),
                   ),
-                ),
 
-                Text(
-                  formatTime(
-                    workout.date,
+                  const SizedBox(
+                    width: 14,
                   ),
-                  style:
-                      const TextStyle(
-                    color: Colors.grey,
-                    fontSize: 13,
-                  ),
-                ),
 
-                const SizedBox(
-                  width: 4,
-                ),
-
-                IconButton(
-                  tooltip:
-                      "Edit Workout",
-                  onPressed:
-                      actionsDisabled
-                          ? null
-                          : onEdit,
-                  icon: const Icon(
-                    Icons.edit_outlined,
-                    color: Colors.white70,
-                    size: 20,
-                  ),
-                ),
-
-                SizedBox(
-                  width: 40,
-                  height: 40,
-                  child: deleting
-                      ? const Padding(
-                          padding:
-                              EdgeInsets
-                                  .all(10),
-                          child:
-                              CircularProgressIndicator(
-                            strokeWidth:
-                                2,
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment:
+                          CrossAxisAlignment
+                              .start,
+                      children: [
+                        Text(
+                          formatHistoryDate(
+                            workout.date,
                           ),
-                        )
-                      : IconButton(
-                          tooltip:
-                              "Delete Workout",
-                          onPressed:
-                              actionsDisabled
-                                  ? null
-                                  : onDelete,
-                          icon:
-                              const Icon(
-                            Icons
-                                .delete_outline,
-                            color:
-                                Colors.red,
-                            size: 20,
+                          style:
+                              const TextStyle(
+                            fontSize: 17,
+                            fontWeight:
+                                FontWeight
+                                    .bold,
                           ),
                         ),
-                ),
-              ],
-            ),
 
-            const SizedBox(
-              height: 16,
-            ),
+                        const SizedBox(
+                          height: 4,
+                        ),
 
-            Row(
-              children: [
-                Expanded(
-                  child: HistoryMetric(
-                    icon: Icons
-                        .timer_outlined,
-                    value:
-                        formatDuration(
-                      workout
-                          .durationSeconds,
+                        Text(
+                          '${formatHistoryTime(workout.date)}'
+                          ' • '
+                          '$exerciseCount '
+                          '${exerciseCount == 1 ? 'exercise' : 'exercises'}',
+                          style:
+                              const TextStyle(
+                            color:
+                                Colors.grey,
+                            fontSize: 13,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                ),
 
-                Expanded(
-                  child: HistoryMetric(
-                    icon: Icons
-                        .bar_chart_rounded,
-                    value:
-                        "${formatNumber(workout.totalVolume)} kg",
+                  const Icon(
+                    Icons
+                        .chevron_right_rounded,
+                    color: Colors.grey,
                   ),
-                ),
+                ],
+              ),
 
-                Expanded(
-                  child: HistoryMetric(
-                    icon: Icons
-                        .checklist_rounded,
-                    value:
-                        "${workout.totalSets} sets",
+              const SizedBox(
+                height: 17,
+              ),
+
+              const Divider(
+                height: 1,
+              ),
+
+              const SizedBox(
+                height: 16,
+              ),
+
+              Row(
+                children: [
+                  Expanded(
+                    child:
+                        _WorkoutStat(
+                      icon: Icons
+                          .timer_outlined,
+                      value:
+                          formatHistoryDuration(
+                        workout
+                            .durationSeconds,
+                      ),
+                      label:
+                          'Duration',
+                    ),
                   ),
-                ),
-              ],
-            ),
 
-            const Divider(
-              height: 30,
-            ),
+                  _VerticalDivider(),
 
-            ...List.generate(
-              workout.exercises.length,
-              (index) {
-                final exercise =
-                    workout
-                        .exercises[index];
-
-                return Padding(
-                  padding:
-                      EdgeInsets.only(
-                    bottom: index ==
-                            workout
-                                    .exercises
-                                    .length -
-                                1
-                        ? 0
-                        : 18,
+                  Expanded(
+                    child:
+                        _WorkoutStat(
+                      icon: Icons
+                          .bar_chart_rounded,
+                      value:
+                          '${formatHistoryNumber(workout.totalVolume)} kg',
+                      label:
+                          'Volume',
+                    ),
                   ),
-                  child:
-                      ExerciseHistory(
-                    exercise:
-                        exercise,
+
+                  _VerticalDivider(),
+
+                  Expanded(
+                    child:
+                        _WorkoutStat(
+                      icon: Icons
+                          .check_circle_outline,
+                      value:
+                          '${workout.totalSets}',
+                      label:
+                          workout.totalSets ==
+                                  1
+                              ? 'Set'
+                              : 'Sets',
+                    ),
                   ),
-                );
-              },
-            ),
-          ],
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
 }
 
-class ExerciseHistory
+class _WorkoutStat
     extends StatelessWidget {
-  final ExerciseData exercise;
+  final IconData icon;
+  final String value;
+  final String label;
 
-  const ExerciseHistory({
-    super.key,
-    required this.exercise,
+  const _WorkoutStat({
+    required this.icon,
+    required this.value,
+    required this.label,
   });
 
   @override
   Widget build(BuildContext context) {
     return Column(
-      crossAxisAlignment:
-          CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            const Icon(
-              Icons.fitness_center,
-              color: Colors.red,
-              size: 18,
-            ),
-
-            const SizedBox(
-              width: 9,
-            ),
-
-            Expanded(
-              child: Text(
-                exercise.name,
-                style:
-                    const TextStyle(
-                  fontSize: 16,
-                  fontWeight:
-                      FontWeight.bold,
-                ),
-              ),
-            ),
-
-            Text(
-              "${formatNumber(exercise.volume)} kg",
-              style:
-                  const TextStyle(
-                color: Colors.grey,
-                fontSize: 12,
-              ),
-            ),
-          ],
-        ),
-
-        const SizedBox(
-          height: 10,
-        ),
-
-        Padding(
-          padding:
-              const EdgeInsets.only(
-            left: 27,
-          ),
-          child: Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: List.generate(
-              exercise.sets.length,
-              (index) {
-                final set =
-                    exercise
-                        .sets[index];
-
-                return Container(
-                  padding:
-                      const EdgeInsets
-                          .symmetric(
-                    horizontal: 10,
-                    vertical: 7,
-                  ),
-                  decoration:
-                      BoxDecoration(
-                    color:
-                        const Color(
-                      0xFF252525,
-                    ),
-                    borderRadius:
-                        BorderRadius
-                            .circular(
-                      8,
-                    ),
-                  ),
-                  child: Text(
-                    "${index + 1}. "
-                    "${formatNumber(set.weight)} kg × "
-                    "${set.reps}",
-                    style:
-                        const TextStyle(
-                      fontSize: 12,
-                    ),
-                  ),
-                );
-              },
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class HistoryMetric
-    extends StatelessWidget {
-  final IconData icon;
-  final String value;
-
-  const HistoryMetric({
-    super.key,
-    required this.icon,
-    required this.value,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
       children: [
         Icon(
           icon,
-          size: 16,
-          color: Colors.grey,
+          size: 19,
+          color: Colors.red,
         ),
 
         const SizedBox(
-          width: 5,
+          height: 6,
         ),
 
-        Flexible(
-          child: Text(
-            value,
-            overflow:
-                TextOverflow.ellipsis,
-            style:
-                const TextStyle(
-              color: Colors.grey,
-              fontSize: 12,
-            ),
+        Text(
+          value,
+          maxLines: 1,
+          overflow:
+              TextOverflow.ellipsis,
+          textAlign: TextAlign.center,
+          style: const TextStyle(
+            fontWeight: FontWeight.bold,
+            fontSize: 14,
+          ),
+        ),
+
+        const SizedBox(
+          height: 3,
+        ),
+
+        Text(
+          label,
+          style: const TextStyle(
+            color: Colors.grey,
+            fontSize: 11,
           ),
         ),
       ],
@@ -586,52 +345,80 @@ class HistoryMetric
   }
 }
 
-class EmptyHistoryState
+class _VerticalDivider
     extends StatelessWidget {
-  const EmptyHistoryState({
-    super.key,
-  });
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 1,
+      height: 42,
+      color: const Color(
+        0xFF333333,
+      ),
+    );
+  }
+}
+
+class _EmptyHistory
+    extends StatelessWidget {
+  const _EmptyHistory();
 
   @override
   Widget build(BuildContext context) {
     return Center(
-      child: Padding(
+      child: SingleChildScrollView(
         padding:
             const EdgeInsets.all(30),
         child: Column(
-          mainAxisSize:
-              MainAxisSize.min,
+          mainAxisAlignment:
+              MainAxisAlignment.center,
           children: [
-            const Icon(
-              Icons.history,
-              size: 70,
-              color: Colors.grey,
+            Container(
+              width: 100,
+              height: 100,
+              decoration: BoxDecoration(
+                color: Colors.red
+                    .withValues(
+                  alpha: 0.10,
+                ),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons
+                    .history_rounded,
+                color: Colors.red,
+                size: 48,
+              ),
             ),
 
             const SizedBox(
-              height: 20,
+              height: 24,
             ),
 
             const Text(
-              "No workouts yet",
+              'No Workouts Yet',
+              textAlign:
+                  TextAlign.center,
               style: TextStyle(
-                fontSize: 22,
+                fontSize: 24,
                 fontWeight:
                     FontWeight.bold,
               ),
             ),
 
             const SizedBox(
-              height: 8,
+              height: 10,
             ),
 
             const Text(
-              "Complete your first workout "
-              "and it will appear here.",
+              'Finish your first workout '
+              'and it will appear here.',
               textAlign:
                   TextAlign.center,
               style: TextStyle(
                 color: Colors.grey,
+                fontSize: 15,
+                height: 1.5,
               ),
             ),
           ],
@@ -641,70 +428,108 @@ class EmptyHistoryState
   }
 }
 
-String formatDate(DateTime date) {
+String formatHistoryDate(
+  DateTime date,
+) {
   const months = [
-    "January",
-    "February",
-    "March",
-    "April",
-    "May",
-    "June",
-    "July",
-    "August",
-    "September",
-    "October",
-    "November",
-    "December",
+    'Jan',
+    'Feb',
+    'Mar',
+    'Apr',
+    'May',
+    'Jun',
+    'Jul',
+    'Aug',
+    'Sep',
+    'Oct',
+    'Nov',
+    'Dec',
   ];
 
-  return "${date.day} "
-      "${months[date.month - 1]} "
-      "${date.year}";
+  final now = DateTime.now();
+
+  final today = DateTime(
+    now.year,
+    now.month,
+    now.day,
+  );
+
+  final workoutDay = DateTime(
+    date.year,
+    date.month,
+    date.day,
+  );
+
+  final difference =
+      today.difference(
+    workoutDay,
+  );
+
+  if (difference.inDays == 0) {
+    return 'Today';
+  }
+
+  if (difference.inDays == 1) {
+    return 'Yesterday';
+  }
+
+  if (date.year == now.year) {
+    return '${date.day} '
+        '${months[date.month - 1]}';
+  }
+
+  return '${date.day} '
+      '${months[date.month - 1]} '
+      '${date.year}';
 }
 
-String formatTime(DateTime date) {
-  final hour = date.hour == 0
-      ? 12
-      : (date.hour > 12
-          ? date.hour - 12
-          : date.hour);
+String formatHistoryTime(
+  DateTime date,
+) {
+  final hour =
+      date.hour % 12 == 0
+          ? 12
+          : date.hour % 12;
 
   final minute =
       date.minute
           .toString()
-          .padLeft(2, "0");
+          .padLeft(
+            2,
+            '0',
+          );
 
   final period =
       date.hour >= 12
-          ? "PM"
-          : "AM";
+          ? 'PM'
+          : 'AM';
 
-  return "$hour:$minute $period";
+  return '$hour:$minute $period';
 }
 
-String formatDuration(int seconds) {
+String formatHistoryDuration(
+  int seconds,
+) {
   final hours =
       seconds ~/ 3600;
 
   final minutes =
       (seconds % 3600) ~/ 60;
 
-  final remainingSeconds =
-      seconds % 60;
-
   if (hours > 0) {
-    return "${hours}h ${minutes}m";
+    return '${hours}h ${minutes}m';
   }
 
   if (minutes > 0) {
-    return "${minutes}m "
-        "${remainingSeconds}s";
+    return '${minutes}m';
   }
 
-  return "${remainingSeconds}s";
+  return '${seconds}s';
 }
 
-String formatNumber(double value) {
+String formatHistoryNumber(
+  double value,
+) {
   if (value ==
       value.roundToDouble()) {
     return value

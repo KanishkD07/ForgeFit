@@ -534,7 +534,7 @@ class _ProfileScreenState
                     await appState
                         .loadProfile();
                   } catch (error) {
-                    if (!mounted) {
+                    if (!context.mounted) {
                       return;
                     }
 

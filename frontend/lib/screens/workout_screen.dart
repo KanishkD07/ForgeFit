@@ -1477,7 +1477,7 @@ class _WorkoutScreenState
                             exercises
                                 .length,
                         separatorBuilder:
-                            (_, __) =>
+                            (_, _) =>
                                 const SizedBox(
                           height: 16,
                         ),
