@@ -34,6 +34,14 @@ const profileSchema = new mongoose.Schema(
       trim: true,
     },
 
+    weeklyWorkoutGoal: {
+      type: Number,
+      required: true,
+      min: 1,
+      max: 7,
+      default: 4,
+    },
+
     memberSince: {
       type: Date,
       required: true,

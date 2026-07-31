@@ -51,8 +51,6 @@ class AppState extends ChangeNotifier {
     required String name,
     required String email,
   }) async {
-    // Clear data belonging to the
-    // previous account.
     _profile = null;
 
     _workouts.clear();
@@ -156,8 +154,6 @@ class AppState extends ChangeNotifier {
 
     _profile = null;
 
-    // Important for multi-user
-    // separation.
     _workouts.clear();
     _routines.clear();
 
@@ -245,6 +241,7 @@ class AppState extends ChangeNotifier {
     required double height,
     required double weight,
     required String goal,
+    int? weeklyWorkoutGoal,
   }) async {
     final token =
         _requireToken();
@@ -268,6 +265,10 @@ class AppState extends ChangeNotifier {
       memberSince:
           currentProfile
               .memberSince,
+      weeklyWorkoutGoal:
+          weeklyWorkoutGoal ??
+              currentProfile
+                  .weeklyWorkoutGoal,
     );
 
     final updatedProfile =
@@ -318,8 +319,53 @@ class AppState extends ChangeNotifier {
           weight,
       goal:
           currentProfile.goal,
+      weeklyWorkoutGoal:
+          currentProfile
+              .weeklyWorkoutGoal,
     );
   }
+
+  Future<void>
+      updateWeeklyWorkoutGoal(
+    int target,
+  ) async {
+    if (
+      target < 1 ||
+      target > 7
+    ) {
+      throw ArgumentError(
+        'Weekly workout goal must '
+        'be between 1 and 7.',
+      );
+    }
+
+    final currentProfile =
+        _profile;
+
+    if (currentProfile == null) {
+      throw Exception(
+        'Profile has not been loaded',
+      );
+    }
+
+    await updateProfile(
+      name:
+          currentProfile.name,
+      height:
+          currentProfile.height,
+      weight:
+          currentProfile.weight,
+      goal:
+          currentProfile.goal,
+      weeklyWorkoutGoal:
+          target,
+    );
+  }
+
+  int get weeklyWorkoutGoal =>
+      _profile
+          ?.weeklyWorkoutGoal ??
+      4;
 
   // =========================
   // WORKOUTS
@@ -387,6 +433,13 @@ class AppState extends ChangeNotifier {
       savedWorkout,
     );
 
+    _workouts.sort(
+      (a, b) =>
+          b.date.compareTo(
+        a.date,
+      ),
+    );
+
     notifyListeners();
 
     return savedWorkout;
@@ -417,6 +470,13 @@ class AppState extends ChangeNotifier {
         ..addAll(
           workouts,
         );
+
+      _workouts.sort(
+        (a, b) =>
+            b.date.compareTo(
+          a.date,
+        ),
+      );
     } finally {
       _loadingWorkouts =
           false;
@@ -549,7 +609,6 @@ class AppState extends ChangeNotifier {
   Future<RoutineData>
       createRoutine({
     required String name,
-
     required List<
             RoutineExerciseData>
         exercises,
@@ -646,6 +705,248 @@ class AppState extends ChangeNotifier {
   }
 
   // =========================
+  // WEEKLY GOALS
+  // =========================
+
+  DateTime get _startOfThisWeek {
+    final now =
+        DateTime.now();
+
+    final today =
+        DateTime(
+      now.year,
+      now.month,
+      now.day,
+    );
+
+    return today.subtract(
+      Duration(
+        days:
+            today.weekday - 1,
+      ),
+    );
+  }
+
+  List<WorkoutData>
+      get workoutsThisWeek {
+    final start =
+        _startOfThisWeek;
+
+    final end =
+        start.add(
+      const Duration(
+        days: 7,
+      ),
+    );
+
+    return _workouts.where(
+      (workout) {
+        return !workout.date
+                .isBefore(start) &&
+            workout.date
+                .isBefore(end);
+      },
+    ).toList();
+  }
+
+  int get weeklyWorkoutCount =>
+      workoutsThisWeek.length;
+
+  int get weeklyWorkoutsRemaining {
+    final remaining =
+        weeklyWorkoutGoal -
+            weeklyWorkoutCount;
+
+    return remaining > 0
+        ? remaining
+        : 0;
+  }
+
+  bool get weeklyGoalCompleted =>
+      weeklyWorkoutCount >=
+      weeklyWorkoutGoal;
+
+  double get weeklyGoalProgress {
+    if (weeklyWorkoutGoal <= 0) {
+      return 0;
+    }
+
+    final progress =
+        weeklyWorkoutCount /
+            weeklyWorkoutGoal;
+
+    return progress
+        .clamp(
+          0.0,
+          1.0,
+        )
+        .toDouble();
+  }
+
+  double get weeklyVolume {
+    return workoutsThisWeek.fold(
+      0,
+      (
+        total,
+        workout,
+      ) =>
+          total +
+          workout.totalVolume,
+    );
+  }
+
+  int get weeklyTrainingSeconds {
+    return workoutsThisWeek.fold(
+      0,
+      (
+        total,
+        workout,
+      ) =>
+          total +
+          workout
+              .durationSeconds,
+    );
+  }
+
+  // =========================
+  // STREAKS
+  // =========================
+
+  int get currentStreak {
+    if (_workouts.isEmpty) {
+      return 0;
+    }
+
+    final workoutDays =
+        _workouts
+            .map(
+              (workout) =>
+                  DateTime(
+                workout.date.year,
+                workout.date.month,
+                workout.date.day,
+              ),
+            )
+            .toSet()
+            .toList()
+          ..sort(
+            (a, b) =>
+                b.compareTo(a),
+          );
+
+    if (workoutDays.isEmpty) {
+      return 0;
+    }
+
+    final now =
+        DateTime.now();
+
+    final today =
+        DateTime(
+      now.year,
+      now.month,
+      now.day,
+    );
+
+    final yesterday =
+        today.subtract(
+      const Duration(
+        days: 1,
+      ),
+    );
+
+    if (
+      workoutDays.first != today &&
+      workoutDays.first != yesterday
+    ) {
+      return 0;
+    }
+
+    int streak = 1;
+
+    for (
+      int i = 1;
+      i < workoutDays.length;
+      i++
+    ) {
+      final expected =
+          workoutDays[i - 1]
+              .subtract(
+        const Duration(
+          days: 1,
+        ),
+      );
+
+      if (
+        workoutDays[i] ==
+            expected
+      ) {
+        streak++;
+      } else {
+        break;
+      }
+    }
+
+    return streak;
+  }
+
+  int get longestStreak {
+    if (_workouts.isEmpty) {
+      return 0;
+    }
+
+    final workoutDays =
+        _workouts
+            .map(
+              (workout) =>
+                  DateTime(
+                workout.date.year,
+                workout.date.month,
+                workout.date.day,
+              ),
+            )
+            .toSet()
+            .toList()
+          ..sort();
+
+    if (workoutDays.isEmpty) {
+      return 0;
+    }
+
+    int longest = 1;
+    int current = 1;
+
+    for (
+      int i = 1;
+      i < workoutDays.length;
+      i++
+    ) {
+      final expected =
+          workoutDays[i - 1]
+              .add(
+        const Duration(
+          days: 1,
+        ),
+      );
+
+      if (
+        workoutDays[i] ==
+            expected
+      ) {
+        current++;
+
+        if (current > longest) {
+          longest = current;
+        }
+      } else {
+        current = 1;
+      }
+    }
+
+    return longest;
+  }
+
+  // =========================
   // STATISTICS
   // =========================
 
@@ -685,55 +986,6 @@ class AppState extends ChangeNotifier {
 
   int get totalPersonalRecords =>
       personalRecords.length;
-
-  List<WorkoutData>
-      get workoutsThisWeek {
-    final now =
-        DateTime.now();
-
-    final sevenDaysAgo =
-        now.subtract(
-      const Duration(
-        days: 7,
-      ),
-    );
-
-    return _workouts.where(
-      (
-        workout,
-      ) {
-        return workout.date
-            .isAfter(
-          sevenDaysAgo,
-        );
-      },
-    ).toList();
-  }
-
-  double get weeklyVolume {
-    return workoutsThisWeek.fold(
-      0,
-      (
-        total,
-        workout,
-      ) =>
-          total +
-          workout.totalVolume,
-    );
-  }
-
-  int get weeklyTrainingSeconds {
-    return workoutsThisWeek.fold(
-      0,
-      (
-        total,
-        workout,
-      ) =>
-          total +
-          workout
-              .durationSeconds,
-    );
-  }
 
   WorkoutData?
       get latestWorkout {

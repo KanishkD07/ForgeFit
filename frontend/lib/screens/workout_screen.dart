@@ -22,8 +22,11 @@ class _WorkoutScreenState
   final List<WorkoutExercise> exercises = [];
 
   Timer? _timer;
+  Timer? _restTimer;
 
   int _elapsedSeconds = 0;
+  int _restDurationSeconds = 90;
+  int _restSecondsRemaining = 0;
 
   bool _workoutActive = false;
   bool _savingWorkout = false;
@@ -46,6 +49,7 @@ class _WorkoutScreenState
   @override
   void dispose() {
     _timer?.cancel();
+    _restTimer?.cancel();
     _disposeExercises();
     super.dispose();
   }
@@ -64,6 +68,7 @@ class _WorkoutScreenState
     if (_savingWorkout) return;
 
     _timer?.cancel();
+    _cancelRestTimer();
 
     _disposeExercises();
 
@@ -82,6 +87,7 @@ class _WorkoutScreenState
     if (_savingWorkout) return;
 
     _timer?.cancel();
+    _cancelRestTimer();
 
     _disposeExercises();
 
@@ -124,8 +130,126 @@ class _WorkoutScreenState
     );
   }
 
+  // =========================
+  // REST TIMER
+  // =========================
+
+  bool get _restTimerActive =>
+      _restSecondsRemaining > 0;
+
+  String get _formattedRestTime {
+    final minutes =
+        _restSecondsRemaining ~/ 60;
+
+    final seconds =
+        _restSecondsRemaining % 60;
+
+    return "${minutes.toString().padLeft(2, '0')}:"
+        "${seconds.toString().padLeft(2, '0')}";
+  }
+
+  void _startRestTimer([
+    int? seconds,
+  ]) {
+    if (!_workoutActive ||
+        _savingWorkout) {
+      return;
+    }
+
+    final duration =
+        seconds ?? _restDurationSeconds;
+
+    _restTimer?.cancel();
+
+    setState(() {
+      _restDurationSeconds =
+          duration;
+      _restSecondsRemaining =
+          duration;
+    });
+
+    _restTimer = Timer.periodic(
+      const Duration(seconds: 1),
+      (timer) {
+        if (!mounted ||
+            !_workoutActive) {
+          timer.cancel();
+          return;
+        }
+
+        if (_restSecondsRemaining <=
+            1) {
+          timer.cancel();
+
+          setState(() {
+            _restSecondsRemaining =
+                0;
+          });
+
+          return;
+        }
+
+        setState(() {
+          _restSecondsRemaining--;
+        });
+      },
+    );
+  }
+
+  void _cancelRestTimer() {
+    _restTimer?.cancel();
+    _restTimer = null;
+    _restSecondsRemaining = 0;
+  }
+
+  void _skipRestTimer() {
+    _restTimer?.cancel();
+    _restTimer = null;
+
+    setState(() {
+      _restSecondsRemaining =
+          0;
+    });
+  }
+
+  void _addRestTime() {
+    if (!_restTimerActive) {
+      return;
+    }
+
+    setState(() {
+      _restSecondsRemaining +=
+          30;
+    });
+  }
+
+  void _setRestPreset(
+    int seconds,
+  ) {
+    _startRestTimer(
+      seconds,
+    );
+  }
+
+  void _onSetCompletionChanged(
+    bool wasCompleted,
+    WorkoutSet set,
+  ) {
+    if (_savingWorkout) {
+      return;
+    }
+
+    setState(() {});
+
+    if (!wasCompleted &&
+        set.completed) {
+      _startRestTimer();
+    }
+  }
+
   void _resetWorkout() {
     _timer?.cancel();
+    _cancelRestTimer();
 
     _disposeExercises();
 
@@ -759,6 +883,7 @@ class _WorkoutScreenState
       if (!mounted) return;
 
       _timer?.cancel();
+      _cancelRestTimer();
 
       _disposeExercises();
 
@@ -1309,6 +1434,27 @@ class _WorkoutScreenState
                     ),
 
                     const SizedBox(
+                      height: 18,
+                    ),
+
+                    RestTimerCard(
+                      active:
+                          _restTimerActive,
+                      formattedTime:
+                          _formattedRestTime,
+                      selectedSeconds:
+                          _restDurationSeconds,
+                      enabled:
+                          !_savingWorkout,
+                      onPreset:
+                          _setRestPreset,
+                      onAddThirty:
+                          _addRestTime,
+                      onSkip:
+                          _skipRestTimer,
+                    ),
+
+                    const SizedBox(
                       height: 24,
                     ),
 
@@ -1353,6 +1499,16 @@ class _WorkoutScreenState
                                   () {},
                                 );
                               }
+                            },
+                            onSetCompletionChanged:
+                                (
+                              wasCompleted,
+                              set,
+                            ) {
+                              _onSetCompletionChanged(
+                                wasCompleted,
+                                set,
+                              );
                             },
                             onAddSet:
                                 () {
@@ -1590,6 +1746,213 @@ class _WorkoutScreenState
                 ),
               ),
             ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class RestTimerCard
+    extends StatelessWidget {
+  final bool active;
+  final String formattedTime;
+  final int selectedSeconds;
+  final bool enabled;
+
+  final void Function(int)
+      onPreset;
+
+  final VoidCallback onAddThirty;
+  final VoidCallback onSkip;
+
+  const RestTimerCard({
+    super.key,
+    required this.active,
+    required this.formattedTime,
+    required this.selectedSeconds,
+    required this.enabled,
+    required this.onPreset,
+    required this.onAddThirty,
+    required this.onSkip,
+  });
+
+  @override
+  Widget build(
+    BuildContext context,
+  ) {
+    const presets = [
+      60,
+      90,
+      120,
+      180,
+    ];
+
+    return Card(
+      child: Padding(
+        padding:
+            const EdgeInsets.all(
+          16,
+        ),
+        child: Column(
+          crossAxisAlignment:
+              CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                CircleAvatar(
+                  backgroundColor:
+                      Colors.red.withValues(
+                    alpha: 0.15,
+                  ),
+                  child: const Icon(
+                    Icons.timer_outlined,
+                    color: Colors.red,
+                  ),
+                ),
+
+                const SizedBox(
+                  width: 12,
+                ),
+
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment:
+                        CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        "Rest Timer",
+                        style: TextStyle(
+                          fontSize: 17,
+                          fontWeight:
+                              FontWeight.bold,
+                        ),
+                      ),
+
+                      const SizedBox(
+                        height: 3,
+                      ),
+
+                      Text(
+                        active
+                            ? "Recover before your next set"
+                            : "Completing a set starts the timer automatically",
+                        style:
+                            const TextStyle(
+                          color: Colors.grey,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+                Text(
+                  active
+                      ? formattedTime
+                      : "${selectedSeconds}s",
+                  style: TextStyle(
+                    fontSize:
+                        active ? 26 : 18,
+                    fontWeight:
+                        FontWeight.bold,
+                    color:
+                        active
+                            ? Colors.red
+                            : Colors.white,
+                  ),
+                ),
+              ],
+            ),
+
+            const SizedBox(
+              height: 16,
+            ),
+
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children:
+                  presets.map(
+                (seconds) {
+                  final selected =
+                      selectedSeconds ==
+                          seconds;
+
+                  final label =
+                      seconds % 60 == 0
+                          ? "${seconds ~/ 60}m"
+                          : "${seconds}s";
+
+                  return ChoiceChip(
+                    label:
+                        Text(label),
+                    selected:
+                        selected,
+                    showCheckmark:
+                        false,
+                    onSelected:
+                        enabled
+                            ? (_) {
+                                onPreset(
+                                  seconds,
+                                );
+                              }
+                            : null,
+                  );
+                },
+              ).toList(),
+            ),
+
+            if (active) ...[
+              const SizedBox(
+                height: 14,
+              ),
+
+              Row(
+                children: [
+                  Expanded(
+                    child:
+                        OutlinedButton.icon(
+                      onPressed:
+                          enabled
+                              ? onAddThirty
+                              : null,
+                      icon:
+                          const Icon(
+                        Icons.add,
+                      ),
+                      label:
+                          const Text(
+                        "+30 sec",
+                      ),
+                    ),
+                  ),
+
+                  const SizedBox(
+                    width: 10,
+                  ),
+
+                  Expanded(
+                    child:
+                        ElevatedButton.icon(
+                      onPressed:
+                          enabled
+                              ? onSkip
+                              : null,
+                      icon:
+                          const Icon(
+                        Icons.skip_next,
+                      ),
+                      label:
+                          const Text(
+                        "Skip",
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
           ],
         ),
       ),
@@ -2704,6 +3067,10 @@ class ExerciseCard
   final bool enabled;
 
   final VoidCallback onChanged;
+  final void Function(
+    bool wasCompleted,
+    WorkoutSet set,
+  ) onSetCompletionChanged;
   final VoidCallback onAddSet;
 
   final VoidCallback
@@ -2717,6 +3084,7 @@ class ExerciseCard
     required this.exercise,
     required this.enabled,
     required this.onChanged,
+    required this.onSetCompletionChanged,
     required this.onAddSet,
     required this.onDeleteExercise,
     required this.onDeleteSet,
@@ -2908,6 +3276,14 @@ class ExerciseCard
                         enabled,
                     onChanged:
                         onChanged,
+                    onCompletionChanged:
+                        (wasCompleted) {
+                      onSetCompletionChanged(
+                        wasCompleted,
+                        exercise.sets[
+                            index],
+                      );
+                    },
                     onDelete: () {
                       onDeleteSet(
                         index,
@@ -2955,6 +3331,9 @@ class SetRow
   final bool enabled;
 
   final VoidCallback onChanged;
+  final void Function(
+    bool wasCompleted,
+  ) onCompletionChanged;
   final VoidCallback onDelete;
 
   const SetRow({
@@ -2963,6 +3342,7 @@ class SetRow
     required this.set,
     required this.enabled,
     required this.onChanged,
+    required this.onCompletionChanged,
     required this.onDelete,
   });
 
@@ -2989,10 +3369,15 @@ class SetRow
       return;
     }
 
+    final wasCompleted =
+        set.completed;
+
     set.completed =
         !set.completed;
 
-    onChanged();
+    onCompletionChanged(
+      wasCompleted,
+    );
   }
 
   @override

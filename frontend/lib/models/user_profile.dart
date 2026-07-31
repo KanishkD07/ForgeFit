@@ -7,6 +7,8 @@ class UserProfile {
   String goal;
   DateTime memberSince;
 
+  int weeklyWorkoutGoal;
+
   UserProfile({
     required this.id,
     required this.name,
@@ -14,6 +16,7 @@ class UserProfile {
     required this.weight,
     required this.goal,
     required this.memberSince,
+    this.weeklyWorkoutGoal = 4,
   });
 
   factory UserProfile.fromJson(
@@ -28,10 +31,17 @@ class UserProfile {
       weight:
           (json["weight"] as num)
               .toDouble(),
-      goal: json["goal"]?.toString() ?? "",
-      memberSince: DateTime.parse(
+      goal:
+          json["goal"]?.toString() ?? "",
+      memberSince:
+          DateTime.parse(
         json["memberSince"].toString(),
       ),
+      weeklyWorkoutGoal:
+          (json["weeklyWorkoutGoal"]
+                      as num?)
+                  ?.toInt() ??
+              4,
     );
   }
 
@@ -41,6 +51,8 @@ class UserProfile {
       "height": height,
       "weight": weight,
       "goal": goal,
+      "weeklyWorkoutGoal":
+          weeklyWorkoutGoal,
     };
   }
 }
